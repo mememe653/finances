@@ -102,6 +102,22 @@ def buy_better(weekly_income, annual_interest_rate, num_yrs):
     cost = total_interest
     return cost
 
+# Assumptions:
+# 30% of my income goes to housing costs, whether renting or buying.
+# Therefore all I need to consider is whether investing the 20% home deposit
+# in shares outweighs the house appreciation.
+def rent_vs_buy(house_purchase_price, num_yrs):
+    buy_sell_costs = 0
+    home_deposit = 0.2 * house_purchase_price + buy_sell_costs
+    renter_wealth = home_deposit * (1 + ANNUAL_SHARE_RATE_OF_RETURN) ** num_yrs
+    new_house_value = house_purchase_price * (1 + ANNUAL_HOUSE_APPRECIATION_RATE) ** num_yrs
+    tax_rate = 0.45
+    cgt_discount = 0.5
+    cgt = (renter_wealth - home_deposit) * cgt_discount * tax_rate
+    renter_wealth -= cgt
+    print(f'Renter wealth after {num_yrs} years = ${renter_wealth}')
+    print(f'House value after {num_yrs} years = ${new_house_value}')
+
 
 if __name__ == '__main__':
     weekly_rent = 150
@@ -185,3 +201,11 @@ if __name__ == '__main__':
     print(f'Number of years = {num_yrs}')
     print()
     print(f'-  ${cost}')
+
+    print()
+    print()
+    print()
+
+    house_purchase_price = 500000
+    num_yrs = 30
+    rent_vs_buy(house_purchase_price, num_yrs)
