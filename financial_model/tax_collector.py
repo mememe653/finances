@@ -7,7 +7,7 @@ class TaxCollector:
 
     def apply_tax(self):
         for tax_collector in self.tax_collectors:
-            tax_collector.parse_receipts()
+            #tax_collector.parse_receipts()
             tax_collector.apply_tax()
 
 
@@ -19,7 +19,10 @@ class IncomeTaxCollector:
         self.taxable_income = []
         for tax_collector in self.tax_collectors:
             for year, taxable_income in enumerate(tax_collector.get_taxable_income()):
-                self.taxable_income[year] += taxable_income
+                try:
+                    self.taxable_income[year] += taxable_income
+                except:
+                    self.taxable_income.append(taxable_income)
 
     def get_taxable_income(self):
         income_file = open("input_files/income.txt", "r")
@@ -74,6 +77,9 @@ class SharesTaxCollector:
                 total_taxable_income[-1] += taxable_income
             input_line = tax_receipt.readline().split()
         return total_taxable_income
+
+    def parse_receipts(self):
+        pass
 
 
 class SuperTaxCollector:
