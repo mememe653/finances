@@ -3,25 +3,29 @@
 # TODO: Add tax support for starting the simulation in the middle of a financial year.
 
 import tax_collector as tax
-import super # This could be an error because super is a keyword?
+import superannuation
 import shares
 
 class Simulator:
     def __init__(self):
         self.starting_balance = 100
-        self.output_cash_files = ["shares.txt"]
-        self.output_tax_file = "invoice.txt"
+        self.output_cash_files = ["shares.txt",
+                                    "super.txt"]
+        self.output_tax_files = ["invoice.txt",
+                                    "super_invoice.txt"]
         self.final_output_file = "output_files/cash.txt"
         self.out_cash = []
 
     def simulate(self, num_weeks):
         # Generate input files here
 
-        assets = [shares.Shares("input_files/shares.txt")]
+        assets = [shares.Shares("input_files/shares.txt"),
+                    superannuation.Super("input_files/super.txt")]
         for asset in assets:
             asset.simulate(num_weeks)
 
-        tax_collectors = [tax.IncomeTaxCollector()]
+        tax_collectors = [tax.IncomeTaxCollector(),
+                            tax.SuperTaxCollector()]
         tax.TaxCollector(tax_collectors).apply_tax()
 
         self.parse_receipts()
@@ -58,17 +62,18 @@ class Simulator:
                 line = f.readline().split()
             f.close()
 
-        tax_file = open(f"output_files/tax/{self.output_tax_file}", "r")
-        line = tax_file.readline().split()
-        while len(line) > 0:
-            week = int(line[0])
-            try:
-                amount = float(line[1])
-            except:
-                amount = 0
-            self.out_cash[week] -= amount
+        for output_tax_file in self.output_tax_files:
+            tax_file = open(f"output_files/tax/{output_tax_file}", "r")
             line = tax_file.readline().split()
-        tax_file.close()
+            while len(line) > 0:
+                week = int(line[0])
+                try:
+                    amount = float(line[1])
+                except:
+                    amount = 0
+                self.out_cash[week] -= amount
+                line = tax_file.readline().split()
+            tax_file.close()
 
         for week in range(len(self.out_cash)):
             if week != 0:
