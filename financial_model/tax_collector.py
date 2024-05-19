@@ -84,10 +84,54 @@ class SharesTaxCollector:
 
 class SuperTaxCollector:
     def __init__(self):
-        pass
+        self.taxed_amount = []
+        self.untaxed_amount = []
+        self.tax_brackets = [18200, 45000, 120000, 180000]
+        self.mtr = [19, 32.5, 37, 45]
+        self.parse_receipt()
+
+    def parse_receipt(self):
+        tax_receipt = open("output_files/tax/super.txt", "r")
+        input_line = tax_receipt.readline().split()
+        while len(input_line) > 0:
+            week = int(input_line[0])
+            year = week % 52
+            if year >= len(self.taxed_amount):
+                self.taxed_amount.append(0)
+                self.untaxed_amount.append(0)
+            if len(input_line) == 3:
+                _, taxed_amount, untaxed_amount = input_line
+                taxed_amount = float(taxed_amount)
+                untaxed_amount = float(untaxed_amount)
+                self.taxed_amount[-1] += taxed_amount
+                self.untaxed_amount[-1] += untaxed_amount
+            input_line = tax_receipt.readline().split()
+        tax_receipt.close()
 
     def apply_tax(self):
-        pass
+        tax_file = open("output_files/tax/super_invoice.txt", "w")
+        total_taxable_income = IncomeTaxCollector().get_taxable_income()
+        for year, taxable_income in enumerate(total_taxable_income):
+            self.taxed_amount[year] += 0.15 * self.untaxed_amount[year]
+            tax = 0
+            idx = 0
+            while taxable_income > self.tax_brackets[idx]:
+                idx += 1
+            idx -= 1
+            while taxable_income + self.taxed_amount[year] > self.tax_brackets[idx]:
+                if idx >= len(self.tax_brackets) - 1:
+                    break
+                tax += (self.mtr[idx] - 30) / 100 * (min(taxable_income + \
+                        self.taxed_amount[year], self.tax_brackets[idx + 1]) \
+                        - max(taxable_income, self.tax_brackets[idx]))
+                idx += 1
+            if taxable_income + self.taxed_amount[year] > self.tax_brackets[-1]:
+                tax += (self.mtr[-1] - 30) / 100 * (taxable_income + \
+                        self.taxed_amount[year] - self.tax_brackets[-1])
+            tax_file.write(f"{year} {tax}\n")
+        tax_file.close()
 
-    def parse_receipts(self, tax_receipts):
-        pass
+
+if __name__ == "__main__":
+    tax_collector = SuperTaxCollector()
+    tax_collector.apply_tax()
