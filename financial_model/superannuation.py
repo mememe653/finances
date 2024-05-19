@@ -96,6 +96,7 @@ class Super:
         annual_ror = 10
         self.weekly_ror = 100 * (math.exp(math.log(1 + annual_ror / 100) / 52) - 1)
         self.out_file_gen = OutputFileGenerator()
+        self.out_cash_file_gen = OutputCashFileGenerator()
         self.tax_receipt_gen = TaxReceiptGenerator()
 
     def simulate(self, num_weeks):
@@ -118,6 +119,7 @@ class Super:
                         self.buy(amount, time)
                 elif command == "SELL":
                     sold_shares = self.sell(amount, time)
+                    self.out_cash_file_gen.add_sold_shares(sold_shares)
                     self.tax_receipt_gen.add_sold_shares(sold_shares)
                 input_line = f.readline().split()
                 if len(input_line) == 0:
@@ -131,6 +133,7 @@ class Super:
                 self.tax(15)
         f.close()
         self.out_file_gen.generate_output_file()
+        self.out_cash_file_gen.generate_output_file(num_weeks)
         self.tax_receipt_gen.generate_tax_receipt(num_weeks)
 
     def buy(self, amount, time):
@@ -219,6 +222,34 @@ class OutputFileGenerator:
     def generate_output_file(self):
         for week, amount in enumerate(self.total_amount):
             self.out_file.write(f"{week} {amount}\n")
+        self.out_file.close()
+
+
+class OutputCashFileGenerator:
+    def __init__(self):
+        self.out_file = open("output_files/cash/super.txt", "w")
+        self.sold_shares = []
+
+    def add_sold_shares(self, new_sold_shares):
+        self.sold_shares.extend(new_sold_shares)
+
+    def generate_output_file(self, num_weeks):
+        # I will assume sold_shares list is sorted based on sell_time
+        for week in range(num_weeks):
+            if len(self.sold_shares) == 0:
+                break
+            if self.sold_shares[0]["sell_time"] != week:
+                self.out_file.write(f"{week}\n")
+            else:
+                taxed_amount = 0
+                untaxed_earnings = 0
+                while self.sold_shares[0]["sell_time"] == week:
+                    taxed_amount += self.sold_shares[0]["taxed_amount"]
+                    untaxed_earnings += self.sold_shares[0]["untaxed_earnings"]
+                    self.sold_shares.pop(0)
+                    if len(self.sold_shares) == 0:
+                        break
+                self.out_file.write(f"{week} {taxed_amount + untaxed_earnings}\n")
         self.out_file.close()
 
 
