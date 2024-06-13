@@ -5,22 +5,31 @@
 import tax_collector as tax
 import superannuation
 import shares
+import home_loan
+import car_loan
+import hecs
 
 class Simulator:
     def __init__(self):
         self.starting_balance = 100
         self.output_cash_files = ["shares.txt",
-                                    "super.txt"]
+                                    "super.txt",
+                                    "home_loan.txt",
+                                    "car_loan.txt",
+                                    "hecs.txt"]
         self.output_tax_files = ["invoice.txt",
                                     "super_invoice.txt"]
         self.final_output_file = "output_files/cash.txt"
         self.out_cash = []
 
     def simulate(self, num_weeks):
-        # Generate input files here
+        self.generate_input_files(num_weeks)
 
         assets = [shares.Shares("input_files/shares.txt"),
-                    superannuation.Super("input_files/super.txt")]
+                    superannuation.Super("input_files/super.txt"),
+                    home_loan.HomeLoan("input_files/home_loan.txt"),
+                    car_loan.CarLoan("input_files/car_loan.txt"),
+                    hecs.Hecs("input_files/hecs.txt")]
         for asset in assets:
             asset.simulate(num_weeks)
 
@@ -29,6 +38,53 @@ class Simulator:
         tax.TaxCollector(tax_collectors).apply_tax()
 
         self.parse_receipts()
+
+    def generate_input_files(self, num_weeks):
+        # Income
+        in_file_gen = income.InputFileGenerator(num_weeks)
+        amount = 1000
+        for week in range(num_weeks):
+            in_file_gen.add(week, amount)
+        in_file_gen.write()
+
+        # Shares
+        in_file_gen = shares.InputFileGenerator(num_weeks)
+        amount = 135000
+        week = 0
+        in_file_gen.buy(amount, week)
+        in_file_gen.write()
+
+        # Super
+        in_file_gen = superannuation.InputFileGenerator(num_weeks)
+        amount = 15000
+        variant = "CC"
+        week = 0
+        in_file_gen.buy(amount, variant, week)
+        in_file_gen.write()
+
+        # Home loan
+        in_file_gen = home_loan.InputFileGenerator(num_weeks)
+        amount = 300000
+        start_week = 2 * 52
+        duration_years = 30
+        in_file_gen.buy(amount, start_week, duration_years)
+        in_file_gen.write()
+
+        # Car loan
+        in_file_gen = car_loan.InputFileGenerator(num_weeks)
+        amount = 30000
+        balloon_payment = 0
+        start_week = 10 * 52
+        duration_years = 10
+        in_file_gen.buy(amount, balloon_payment, start_week, duration_years)
+        in_file_gen.write()
+
+        # HECS
+        in_file_gen = hecs.InputFileGenerator(num_weeks)
+        amount = 25000
+        start_week = 0
+        in_file_gen.buy(amount, start_week)
+        in_file_gen.write()
 
     def parse_receipts(self):
         income_file = open("input_files/income.txt", "r")
