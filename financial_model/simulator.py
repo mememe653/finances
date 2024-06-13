@@ -36,6 +36,15 @@ class Parameters:
             }
 
 
+class InflationAdjuster:
+    def __init__(self, annual_inflation_rate):
+        self.weekly_inflation_rate = (math.exp(math.log(1 + self.interest_rate / 100) / 52) - 1) \
+                                        * 100
+
+    def apply_inflation(self, amount, time):
+        return amount * self.weekly_inflation_rate ** time
+
+
 class Simulator:
     def __init__(self):
         self.starting_balance = 100
