@@ -7,10 +7,10 @@
 import math
 
 class Shares:
-    def __init__(self, in_file):
+    def __init__(self, in_file, params):
         self.in_file = in_file
         self.shares = []
-        annual_ror = 10
+        annual_ror = params["annual_ror"]
         self.weekly_ror = 100 * (math.exp(math.log(1 + annual_ror / 100) / 52) - 1)
         self.out_file_gen = OutputFileGenerator()
         self.out_cash_file_gen = OutputCashFileGenerator()
@@ -73,7 +73,7 @@ class Shares:
 
 
 class InputFileGenerator:
-    def __init__(self, num_weeks, annual_ror):
+    def __init__(self, num_weeks):
         self.in_file = open("input_files/shares.txt", "w")
         self.num_weeks = num_weeks
         self.buy_list = {}

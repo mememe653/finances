@@ -1,11 +1,11 @@
 import math
 
 class HomeLoan:
-    def __init__(self, in_file):
+    def __init__(self, in_file, params):
         self.in_file = in_file
         self.out_file_gen = OutputFileGenerator()
         self.out_cash_file_gen = OutputCashFileGenerator()
-        self.interest_rate = 6
+        self.interest_rate = params["annual_interest_rate"]
         #self.weekly_interest_rate = self.interest_rate / 52 / 100
         self.weekly_interest_rate = (math.exp(math.log(1 + self.interest_rate / 100) / 52) - 1) \
                                     * 100

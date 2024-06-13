@@ -9,6 +9,33 @@ import home_loan
 import car_loan
 import hecs
 
+class Parameters:
+    def shares():
+        return {
+                "annual_ror": 10
+            }
+
+    def super():
+        return {
+                "annual_ror": 10
+            }
+
+    def home_loan():
+        return {
+                "annual_interest_rate": 6
+            }
+
+    def car_loan():
+        return {
+                "annual_interest_rate": 6
+            }
+
+    def hecs():
+        return {
+                "annual_indexation_rate": 4
+            }
+
+
 class Simulator:
     def __init__(self):
         self.starting_balance = 100
@@ -25,11 +52,11 @@ class Simulator:
     def simulate(self, num_weeks):
         self.generate_input_files(num_weeks)
 
-        assets = [shares.Shares("input_files/shares.txt"),
-                    superannuation.Super("input_files/super.txt"),
-                    home_loan.HomeLoan("input_files/home_loan.txt"),
-                    car_loan.CarLoan("input_files/car_loan.txt"),
-                    hecs.Hecs("input_files/hecs.txt")]
+        assets = [shares.Shares("input_files/shares.txt", Parameters.shares()),
+                    superannuation.Super("input_files/super.txt", Parameters.super()),
+                    home_loan.HomeLoan("input_files/home_loan.txt", Parameters.home_loan()),
+                    car_loan.CarLoan("input_files/car_loan.txt", Parameters.car_loan()),
+                    hecs.Hecs("input_files/hecs.txt", Parameters.hecs())]
         for asset in assets:
             asset.simulate(num_weeks)
 
@@ -147,4 +174,4 @@ class Simulator:
 
 
 if __name__ == "__main__":
-    Simulator().simulate(104)
+    #Simulator().simulate(104)
