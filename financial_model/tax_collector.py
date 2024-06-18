@@ -17,12 +17,15 @@ class IncomeTaxCollector:
         self.mtr = [19, 32.5, 37, 45]
         self.tax_collectors = [self, SharesTaxCollector()]
         self.taxable_income = []
+        self.super_cc_contributions = self.get_super_cc_contribs()
         for tax_collector in self.tax_collectors:
             for year, taxable_income in enumerate(tax_collector.get_taxable_income()):
                 try:
                     self.taxable_income[year] += taxable_income
                 except:
                     self.taxable_income.append(taxable_income)
+        for year in range(len(self.taxable_income)):
+            self.taxable_income[year] -= self.super_cc_contributions[year]
 
     def get_taxable_income(self):
         income_file = open("input_files/income.txt", "r")
@@ -32,12 +35,29 @@ class IncomeTaxCollector:
             if len(input_line) == 2:
                 week, taxable_income = input_line
                 week, taxable_income = int(week), float(taxable_income)
-                year = week % 52
+                year = week // 52
                 if year >= len(total_taxable_income):
                     total_taxable_income.append(0)
                 total_taxable_income[-1] += taxable_income
             input_line = income_file.readline().split()
         return total_taxable_income
+
+    def get_super_cc_contribs(self):
+        input_file = open("input_files/super.txt", "r")
+        super_cc_contribs = []
+        input_line = input_file.readline().split()
+        while len(input_line) > 0:
+            week = int(input_line[0])
+            year = week // 52
+            if year >= len(super_cc_contribs):
+                super_cc_contribs.append(0)
+            if len(input_line) == 4:
+                week, command, variant, amount = input_line
+                if variant == "CC":
+                    week, amount = int(week), int(amount)
+                    super_cc_contribs[-1] += amount
+            input_line = input_file.readline().split()
+        return super_cc_contribs
 
     def apply_tax(self):
         tax_file = open("output_files/tax/invoice.txt", "w")
@@ -52,6 +72,7 @@ class IncomeTaxCollector:
                 idx += 1
             if taxable_income > self.tax_brackets[-1]:
                 tax += self.mtr[-1] / 100 * (taxable_income - self.tax_brackets[-1])
+            tax += 0.15 * self.super_cc_contributions[year]
             tax_file.write(f"{year} {tax}\n")
         tax_file.close()
 
@@ -71,7 +92,7 @@ class SharesTaxCollector:
             if len(input_line) == 2:
                 week, taxable_income = input_line
                 week, taxable_income = int(week), float(taxable_income)
-                year = week % 52
+                year = week // 52
                 if year >= len(total_taxable_income):
                     total_taxable_income.append(0)
                 total_taxable_income[-1] += taxable_income
@@ -95,7 +116,7 @@ class SuperTaxCollector:
         input_line = tax_receipt.readline().split()
         while len(input_line) > 0:
             week = int(input_line[0])
-            year = week % 52
+            year = week // 52
             if year >= len(self.taxed_amount):
                 self.taxed_amount.append(0)
                 self.untaxed_amount.append(0)
@@ -116,8 +137,9 @@ class SuperTaxCollector:
             tax = 0
             idx = 0
             while taxable_income > self.tax_brackets[idx]:
+                if idx >= len(self.tax_brackets) - 1:
+                    break
                 idx += 1
-            idx -= 1
             while taxable_income + self.taxed_amount[year] > self.tax_brackets[idx]:
                 if idx >= len(self.tax_brackets) - 1:
                     break
