@@ -12,6 +12,7 @@ class HomeLoan:
 
     def simulate(self, num_weeks):
         f = open(self.in_file, "r")
+        self.loan_amount = 0
         input_line = f.readline().split()
         time = int(input_line[0])
         for week in range(num_weeks):
@@ -21,6 +22,7 @@ class HomeLoan:
                     time, amount, duration = int(time), int(amount), int(duration)
                     if command == "START":
                         self.buy(amount, time)
+                        self.out_cash_file_gen.add_loan(amount, time)
                         self.weekly_repayment = self.minimum_repayment(amount, \
                                                                         self.interest_rate, \
                                                                         duration)
@@ -114,6 +116,12 @@ class OutputCashFileGenerator:
         self.out_file = open("output_files/cash/home_loan.txt", "w")
         self.loan_payments = []
 
+    def add_loan(self, amount, time):
+        self.loan = {
+                "buy_time": time,
+                "amount": amount
+            }
+
     def add_payment(self, payment):
         self.loan_payments.append(payment)
 
@@ -128,14 +136,22 @@ class OutputCashFileGenerator:
                 self.loan_payments.pop(0)
                 if len(self.loan_payments) == 0:
                     break
-            self.out_file.write(f"{week} {-amount}\n")
+            if week == self.loan["buy_time"]:
+                self.out_file.write(f"{week} {self.loan['amount'] - amount}\n")
+            else:
+                self.out_file.write(f"{week} {-amount}\n")
         self.out_file.close()
 
 
 if __name__ == "__main__":
-    input_file_gen = InputFileGenerator(520)
+    num_weeks = 520
+    params = {
+            "annual_interest_rate": 6
+        }
+
+    input_file_gen = InputFileGenerator(num_weeks)
     input_file_gen.buy(100, 0, 5)
     input_file_gen.write()
 
-    home_loan = HomeLoan("input_files/home_loan.txt")
-    home_loan.simulate(520)
+    home_loan = HomeLoan("input_files/home_loan.txt", params)
+    home_loan.simulate(num_weeks)
