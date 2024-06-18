@@ -11,6 +11,11 @@ class CarLoan:
 
     def simulate(self, num_weeks):
         f = open(self.in_file, "r")
+        self.loan_amount = 0
+        self.balloon_payment = {
+                "amount": 0,
+                "time": -1
+            }
         input_line = f.readline().split()
         time = int(input_line[0])
         for week in range(num_weeks):
@@ -130,9 +135,14 @@ class OutputCashFileGenerator:
 
 
 if __name__ == "__main__":
-    input_file_gen = InputFileGenerator(520)
+    num_weeks = 520
+    params = {
+            "annual_interest_rate": 6
+        }
+
+    input_file_gen = InputFileGenerator(num_weeks)
     input_file_gen.buy(100, 20, 0, 5)
     input_file_gen.write()
 
-    car_loan = CarLoan("input_files/car_loan.txt")
-    car_loan.simulate(520)
+    car_loan = CarLoan("input_files/car_loan.txt", params)
+    car_loan.simulate(num_weeks)
