@@ -1,9 +1,11 @@
-# I think read from input file which directs the simulation
-# But also write to output file which can be read by external parties like tax collector
-# Probably write out as JSON
+# Usage:
+# {time} BUY {amount} - {amount} is the number of shares bought for $1 per share
+# {time} SELL {amount} - {amount} is the number of shares bought, not their current value
 
-# I could improve accuracy of my code by only allowing to buy/sell an integer number of shares
-# I will make it so that you buy each share at $1, because I won't bother with cents
+# Output cash does not currently have negative cash corresponding to purchase of shares
+# I think I have made a fix for the sentence above now
+# Everything else is correct
+
 import math
 
 class Shares:
@@ -27,6 +29,7 @@ class Shares:
                     time, amount = int(time), int(amount)
                     if command == "BUY":
                         self.buy(amount, time)
+                        self.out_cash_file_gen.add_bought_shares(amount, time)
                     elif command == "SELL":
                         sold_shares = self.sell(amount, time)
                         self.out_cash_file_gen.add_sold_shares(sold_shares)
@@ -118,27 +121,38 @@ class OutputFileGenerator:
 class OutputCashFileGenerator:
     def __init__(self):
         self.out_file = open("output_files/cash/shares.txt", "w")
+        self.bought_shares = []
         self.sold_shares = []
+
+    def add_bought_shares(self, amount, time):
+        self.bought_shares.append({
+            "buy_time": time,
+            "amount": amount
+        })
 
     def add_sold_shares(self, new_sold_shares):
         self.sold_shares.extend(new_sold_shares)
 
     def generate_output_file(self, num_weeks):
         # I will assume sold_shares list is sorted based on sell_time
+        # Similarly for bought_shares list
         for week in range(num_weeks):
-            if len(self.sold_shares) == 0:
-                break
-            if self.sold_shares[0]["sell_time"] != week:
-                self.out_file.write(f"{week}\n")
-            else:
-                sell_amount = 0
+            buy_amount = 0
+            sell_amount = 0
+            if len(self.bought_shares) != 0:
+                while self.bought_shares[0]["buy_time"] == week:
+                    buy_amount += self.bought_shares[0]["amount"]
+                    self.bought_shares.pop(0)
+                    if len(self.bought_shares) == 0:
+                        break
+            if len(self.sold_shares) != 0:
                 while self.sold_shares[0]["sell_time"] == week:
                     sell_amount += self.sold_shares[0]["amount"] \
                                     + self.sold_shares[0]["capital_gains"]
                     self.sold_shares.pop(0)
                     if len(self.sold_shares) == 0:
                         break
-                self.out_file.write(f"{week} {sell_amount}\n")
+            self.out_file.write(f"{week} {sell_amount - buy_amount}\n")
         self.out_file.close()
 
 
@@ -173,10 +187,14 @@ class TaxReceiptGenerator:
 
 if __name__ == "__main__":
     num_weeks = 104
-    in_file_gen = InputFileGenerator(num_weeks, 10)
+    params = {
+            "annual_ror": 10
+        }
+
+    in_file_gen = InputFileGenerator(num_weeks)
     in_file_gen.buy(100, 0)
     in_file_gen.sell(90, 52)
     in_file_gen.write()
 
-    shares_sim = Shares("input_files/shares.txt")
+    shares_sim = Shares("input_files/shares.txt", params)
     shares_sim.simulate(num_weeks)
