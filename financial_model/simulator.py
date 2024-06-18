@@ -3,6 +3,7 @@
 # TODO: Add tax support for starting the simulation in the middle of a financial year.
 
 import tax_collector as tax
+import income
 import superannuation
 import shares
 import home_loan
@@ -56,7 +57,11 @@ class Simulator:
         self.output_tax_files = ["invoice.txt",
                                     "super_invoice.txt"]
         self.final_output_file = "output_files/cash.txt"
-        self.out_cash = []
+        #TODO:Add support for inflation in tax brackets
+        #TODO:Generate and print output report after simulation
+        #TODO:Improve starting balance functionality beyond what I currently have below
+        starting_balance = 200000
+        self.out_cash = [starting_balance]
 
     def simulate(self, num_weeks):
         self.generate_input_files(num_weeks)
@@ -158,7 +163,8 @@ class Simulator:
             tax_file = open(f"output_files/tax/{output_tax_file}", "r")
             line = tax_file.readline().split()
             while len(line) > 0:
-                week = int(line[0])
+                year = int(line[0])
+                week = (year + 1) * 52 - 1
                 try:
                     amount = float(line[1])
                 except:
@@ -183,4 +189,5 @@ class Simulator:
 
 
 if __name__ == "__main__":
-    #Simulator().simulate(104)
+    num_weeks = 1040
+    Simulator().simulate(num_weeks)
