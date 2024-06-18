@@ -87,6 +87,40 @@
 # Might need to split pre-tax modules from post-tax modules, so that I can simulate the pre-tax modules,
 # generate tax receipts, apply tax, then simulate post-tax modules.
 
+# TODO: Handle output cash upon making super contribution, and maybe generate tax receipt if taxed on entry.
+# Actually can't do tax receipt upon entry because this tax can't be applied after the fact.
+# Tax on entry needs to be applied before simulation.
+# Actually I know what to do, can do it during the simulation here.
+# I think what I have done is correct for CC contributions, but not NCC.
+# Something must be wrong because it looks like NCC is just unconditionally better than CC, which should not be right.
+# Come back to this file later.
+
+# You could split NCC and CC into separate files and simulate them separately.
+# What you really need to do is figure out what prerequisites NCC and CC need respectively,
+# then sort out the simulation order to make sure they have them.
+
+# NCC needs marginal tax rate, which requires everything that contributes to income tax to be simulated.
+# CC needs either tax to not have been applied, or to have been applied but then reverted to 15% tax rate.
+# It's all fucked because shares are also being taxed after the fact, but they can grow without being taxed.
+
+# We can keep the input file generation, but we need to run all the simulations as we go,
+# one step at a time.
+# Just make it follow how it happens in real life, with tax causing some income to be withheld as it is paid out,
+# and then you might get money back on your tax return at the end of the financial year.
+# Actually no, the current way is valid because the asset values are reduced when you sell.
+# Couldn't I just keep everything as is, but make CC contributions immune to being taxed twice?
+# The problem I've got is essentially that I think NCC contributions, and everything that is bought,
+# is not taxed on the way in, because income is not withheld for tax reasons.
+# Unless I define income file to contain after-tax income, but I should probably not do that.
+
+# I think just process the income file before running any simulations, so that you tax it all beforehand.
+# Then at the end of each year, you can return money to income file if too much was withheld, as in real life.
+# Either do the above, or actually the simplest thing you can do would be to keep everything as is
+# except return money when tax is calculated, for CC contributions, then nothing else needs to change.
+# You could reduce taxable income by CC contribution amount, and then apply the 15% tax to it, at tax time.
+
+# I think I have fixed everything in this file and tax_collector now, but worth carefully scrutinising my changes.
+
 import math
 
 class Super:
@@ -115,8 +149,10 @@ class Super:
                 if command == "BUY":
                     if variant == "CC":
                         self.buy(amount, time)
+                        self.out_cash_file_gen.add_bought_shares(amount, time)
                     elif variant == "NCC":
                         self.buy(amount, time)
+                        self.out_cash_file_gen.add_bought_shares(amount, time)
                 elif command == "SELL":
                     sold_shares = self.sell(amount, time)
                     self.out_cash_file_gen.add_sold_shares(sold_shares)
@@ -228,28 +264,39 @@ class OutputFileGenerator:
 class OutputCashFileGenerator:
     def __init__(self):
         self.out_file = open("output_files/cash/super.txt", "w")
+        self.bought_shares = []
         self.sold_shares = []
+
+    def add_bought_shares(self, amount, time):
+        self.bought_shares.append({
+            "buy_time": time,
+            "amount": amount
+        })
 
     def add_sold_shares(self, new_sold_shares):
         self.sold_shares.extend(new_sold_shares)
 
     def generate_output_file(self, num_weeks):
         # I will assume sold_shares list is sorted based on sell_time
+        # Similarly for bought_shares list
         for week in range(num_weeks):
-            if len(self.sold_shares) == 0:
-                break
-            if self.sold_shares[0]["sell_time"] != week:
-                self.out_file.write(f"{week}\n")
-            else:
-                taxed_amount = 0
-                untaxed_earnings = 0
+            buy_amount = 0
+            taxed_amount = 0
+            untaxed_earnings = 0
+            if len(self.bought_shares) != 0:
+                while self.bought_shares[0]["buy_time"] == week:
+                    buy_amount += self.bought_shares[0]["amount"]
+                    self.bought_shares.pop(0)
+                    if len(self.bought_shares) == 0:
+                        break
+            if len(self.sold_shares) != 0:
                 while self.sold_shares[0]["sell_time"] == week:
                     taxed_amount += self.sold_shares[0]["taxed_amount"]
                     untaxed_earnings += self.sold_shares[0]["untaxed_earnings"]
                     self.sold_shares.pop(0)
                     if len(self.sold_shares) == 0:
                         break
-                self.out_file.write(f"{week} {taxed_amount + untaxed_earnings}\n")
+            self.out_file.write(f"{week} {taxed_amount + untaxed_earnings - buy_amount}\n")
         self.out_file.close()
 
 
@@ -265,8 +312,8 @@ class TaxReceiptGenerator:
         # I will assume sold_shares list is sorted based on sell_time
         for week in range(num_weeks):
             if len(self.sold_shares) == 0:
-                break # Pretty sure we don't actually want to break here
-            if self.sold_shares[0]["sell_time"] != week:
+                self.tax_file.write(f"{week}\n")
+            elif self.sold_shares[0]["sell_time"] != week:
                 self.tax_file.write(f"{week}\n")
             else:
                 taxed_amount = 0
@@ -283,11 +330,14 @@ class TaxReceiptGenerator:
 
 if __name__ == "__main__":
     num_weeks = 200
-    in_file_gen = InputFileGenerator(num_weeks, 0)
+    params = {
+            "annual_ror": 10
+        }
+    in_file_gen = InputFileGenerator(num_weeks)
 
     in_file_gen.buy(100, "CC", 0)
     in_file_gen.sell(10, 100)
     in_file_gen.write()
 
-    sim = Super("input_files/super.txt")
+    sim = Super("input_files/super.txt", params)
     sim.simulate(num_weeks)
