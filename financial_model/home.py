@@ -60,7 +60,7 @@ class Home:
 
 
 class InputFileGenerator:
-    def __init__(self, num_weeks, annual_ror):
+    def __init__(self, num_weeks):
         self.in_file = open("input_files/home.txt", "w")
         self.num_weeks = num_weeks
         self.buy_list = {}
@@ -77,7 +77,6 @@ class InputFileGenerator:
             except:
                 pass
             if week not in self.buy_list \
-                    and week not in self.loan_list \
                     and week not in self.sell_list:
                 self.in_file.write(f"{week}\n")
         self.in_file.close()
@@ -94,10 +93,13 @@ class OutputFileGenerator:
         self.out_property_file = open(f"output_files/home.txt", "w")
         self.property_value = []
 
-    def write_output(self, properties, loans):
-        self.property_value.append(properties[0]["amount"])
+    def write_output(self, properties):
+        try:
+            self.property_value.append(properties[0]["amount"])
+        except:
+            self.property_value.append(0)
 
-    def generate_output_files(self):
+    def generate_output_file(self):
         for week in range(len(self.property_value)):
             self.out_property_file.write(f"{week} {self.property_value[week]}\n")
         self.out_property_file.close()
