@@ -6,6 +6,7 @@ import tax_collector as tax
 import income
 import superannuation
 import shares
+import home
 import home_loan
 import car_loan
 import hecs
@@ -13,12 +14,19 @@ import hecs
 class Parameters:
     def shares():
         return {
-                "annual_ror": 10
+                "annual_ror": 10,
+                "starting_balance": 135000
             }
 
     def super():
         return {
-                "annual_ror": 10
+                "annual_ror": 10,
+                "starting_balance": 17000
+            }
+
+    def home():
+        return {
+                "annual_ror": 8
             }
 
     def home_loan():
@@ -51,16 +59,18 @@ class Simulator:
         self.starting_balance = 100
         self.output_cash_files = ["shares.txt",
                                     "super.txt",
+                                    "home.txt",
                                     "home_loan.txt",
                                     "car_loan.txt",
                                     "hecs.txt"]
         self.output_tax_files = ["invoice.txt",
                                     "super_invoice.txt"]
         self.final_output_file = "output_files/cash.txt"
+        #TODO:Adjust for inflation when generating input files
         #TODO:Add support for inflation in tax brackets
         #TODO:Generate and print output report after simulation
         #TODO:Improve starting balance functionality beyond what I currently have below
-        starting_balance = 200000
+        starting_balance = 180000
         self.out_cash = [starting_balance]
 
     def simulate(self, num_weeks):
@@ -68,6 +78,7 @@ class Simulator:
 
         assets = [shares.Shares("input_files/shares.txt", Parameters.shares()),
                     superannuation.Super("input_files/super.txt", Parameters.super()),
+                    home.Home("input_files/home.txt", Parameters.home()),
                     home_loan.HomeLoan("input_files/home_loan.txt", Parameters.home_loan()),
                     car_loan.CarLoan("input_files/car_loan.txt", Parameters.car_loan()),
                     hecs.Hecs("input_files/hecs.txt", Parameters.hecs())]
@@ -80,6 +91,8 @@ class Simulator:
 
         self.parse_receipts()
 
+        self.print_final_report(num_weeks)
+
     def generate_input_files(self, num_weeks):
         # Income
         in_file_gen = income.InputFileGenerator(num_weeks)
@@ -90,17 +103,24 @@ class Simulator:
 
         # Shares
         in_file_gen = shares.InputFileGenerator(num_weeks)
-        amount = 135000
+        amount = 1
         week = 0
         in_file_gen.buy(amount, week)
         in_file_gen.write()
 
         # Super
         in_file_gen = superannuation.InputFileGenerator(num_weeks)
-        amount = 15000
+        amount = 1
         variant = "CC"
         week = 0
         in_file_gen.buy(amount, variant, week)
+        in_file_gen.write()
+
+        # Home
+        in_file_gen = home.InputFileGenerator(num_weeks)
+        amount = 500000
+        week = 2 * 52
+        in_file_gen.buy(amount, week)
         in_file_gen.write()
 
         # Home loan
@@ -185,7 +205,74 @@ class Simulator:
 
     def assert_positive_balance(self):
         for amount in self.out_cash:
+            #print(amount)
             assert amount >= 0
+
+    def print_final_report(self, num_weeks):
+        out_cash_file = open("output_files/cash.txt", "r")
+
+        out_shares_file = open("output_files/shares.txt", "r")
+        out_super_file = open("output_files/super.txt", "r")
+        out_home_file = open("output_files/home.txt", "r")
+        out_home_loan_file = open("output_files/home_loan.txt", "r")
+        out_car_loan_file = open("output_files/car_loan.txt", "r")
+        out_hecs_file = open("output_files/hecs.txt", "r")
+
+        print("---------------")
+        print("Debts")
+        print("---------------")
+        for line in out_home_loan_file:
+            pass
+        week, amount = line.split()
+        if int(week) == num_weeks - 1:
+            formatted_amount = "${:,.2f}".format(float(amount))
+            print(f"Home Loan = {formatted_amount}")
+        for line in out_car_loan_file:
+            pass
+        week, amount = line.split()
+        if int(week) == num_weeks - 1:
+            formatted_amount = "${:,.2f}".format(float(amount))
+            print(f"Car Loan = {formatted_amount}")
+        for line in out_hecs_file:
+            pass
+        week, amount = line.split()
+        if int(week) == num_weeks - 1:
+            formatted_amount = "${:,.2f}".format(float(amount))
+            print(f"HECS = {formatted_amount}")
+
+        print()
+        print("---------------")
+        print("Assets")
+        print("---------------")
+        for line in out_shares_file:
+            pass
+        week, amount = line.split()
+        if int(week) == num_weeks - 1:
+            formatted_amount = "${:,.2f}".format(float(amount))
+            print(f"Shares = {formatted_amount}")
+        for line in out_home_file:
+            pass
+        week, amount = line.split()
+        if int(week) == num_weeks - 1:
+            formatted_amount = "${:,.2f}".format(float(amount))
+            print(f"Home = {formatted_amount}")
+
+        print()
+        print("---------------")
+        print("Cash")
+        print("---------------")
+        for line in out_super_file:
+            pass
+        week, amount = line.split()
+        if int(week) == num_weeks - 1:
+            formatted_amount = "${:,.2f}".format(float(amount))
+            print(f"Super = {formatted_amount}")
+        for line in out_cash_file:
+            pass
+        week, amount = line.split()
+        if int(week) == num_weeks - 1:
+            formatted_amount = "${:,.2f}".format(float(amount))
+            print(f"Cash = {formatted_amount}")
 
 
 if __name__ == "__main__":
