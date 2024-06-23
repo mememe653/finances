@@ -1,9 +1,9 @@
 # TODO: Do starting balance consistency checking between simulations so you are comparing like for like.
 # TODO: Read tax brackets from file; they should increase with inflation.
-# TODO: Add tax support for starting the simulation in the middle of a financial year.
 
 import tax_collector as tax
 import income
+import misc
 import superannuation
 import shares
 import home
@@ -21,7 +21,8 @@ class Parameters:
     def super():
         return {
                 "annual_ror": 10,
-                "starting_balance": 17000
+                #"starting_balance": 17000
+                "starting_balance": 1
             }
 
     def home():
@@ -68,9 +69,7 @@ class Simulator:
         self.final_output_file = "output_files/cash.txt"
         #TODO:Adjust for inflation when generating input files
         #TODO:Add support for inflation in tax brackets
-        #TODO:Generate and print output report after simulation
-        #TODO:Improve starting balance functionality beyond what I currently have below
-        starting_balance = 180000
+        starting_balance = 8000
         self.out_cash = [starting_balance]
 
     def simulate(self, num_weeks):
@@ -94,33 +93,54 @@ class Simulator:
         self.print_final_report(num_weeks)
 
     def generate_input_files(self, num_weeks):
+        # Miscellaneous expenses
+        misc_file_gen = misc.InputFileGenerator(num_weeks)
+
         # Income
         in_file_gen = income.InputFileGenerator(num_weeks)
-        amount = 1000
+        weekly_income = int(75000 / 52)
         for week in range(num_weeks):
-            in_file_gen.add(week, amount)
+            in_file_gen.add(week, weekly_income)
         in_file_gen.write()
+
+        #amount = 1
+        #week = 0
+        #misc_file_gen.add(week, amount)
 
         # Shares
         in_file_gen = shares.InputFileGenerator(num_weeks)
-        amount = 1
-        week = 0
-        in_file_gen.buy(amount, week)
+        #amount = 1
+        #week = 0
+        #in_file_gen.buy(amount, week)
+        total_amount = 0
+        for week in range(15, 2 * 52):
+            in_file_gen.buy(1000, week)
+            total_amount += 1000
+        in_file_gen.sell(135000 + total_amount, 2 * 52)
         in_file_gen.write()
 
         # Super
         in_file_gen = superannuation.InputFileGenerator(num_weeks)
-        amount = 1
+        super_amount = 0.11 * weekly_income
         variant = "CC"
         week = 0
-        in_file_gen.buy(amount, variant, week)
+        #for week in range(num_weeks):
+            #in_file_gen.buy(super_amount, variant, week)
+            #misc_file_gen.add(week, -0.15 * super_amount)
+        for week in range(15):
+            in_file_gen.buy(1000, "CC", week)
+        in_file_gen.sell(15000 + 2700, 2 * 52)
+        #in_file_gen.buy(1, "CC", 0)
         in_file_gen.write()
 
         # Home
         in_file_gen = home.InputFileGenerator(num_weeks)
         amount = 500000
         week = 2 * 52
+        #amount = 1
+        #week = 0
         in_file_gen.buy(amount, week)
+        #in_file_gen.sell(3 * 52)
         in_file_gen.write()
 
         # Home loan
@@ -128,24 +148,36 @@ class Simulator:
         amount = 300000
         start_week = 2 * 52
         duration_years = 30
+        #amount = 1
+        #start_week = 0
+        #duration_years = 1
         in_file_gen.buy(amount, start_week, duration_years)
         in_file_gen.write()
 
         # Car loan
         in_file_gen = car_loan.InputFileGenerator(num_weeks)
-        amount = 30000
+        #amount = 30000
+        #balloon_payment = 5000
+        #start_week = 10 * 52
+        #duration_years = 5
+        amount = 1
         balloon_payment = 0
-        start_week = 10 * 52
-        duration_years = 10
+        start_week = 0
+        duration_years = 1
         in_file_gen.buy(amount, balloon_payment, start_week, duration_years)
         in_file_gen.write()
 
         # HECS
         in_file_gen = hecs.InputFileGenerator(num_weeks)
-        amount = 25000
+        #amount = 25000
+        #start_week = 0
+        amount = 1
         start_week = 0
         in_file_gen.buy(amount, start_week)
+        #in_file_gen.pay(10000, 52)
         in_file_gen.write()
+
+        misc_file_gen.write()
 
     def parse_receipts(self):
         income_file = open("input_files/income.txt", "r")
@@ -162,6 +194,21 @@ class Simulator:
                 self.out_cash.append(amount)
             line = income_file.readline().split()
         income_file.close()
+
+        misc_file = open("input_files/misc.txt", "r")
+        line = misc_file.readline().split()
+        while len(line) > 0:
+            week = int(line[0])
+            if len(line) == 2:
+                amount = float(line[1])
+            else:
+                amount = 0
+            if week < len(self.out_cash):
+                self.out_cash[week] += amount
+            else:
+                self.out_cash.append(amount)
+            line = misc_file.readline().split()
+        misc_file.close()
 
         for out_cash_file in self.output_cash_files:
             f = open(f"output_files/cash/{out_cash_file}", "r")
@@ -197,11 +244,12 @@ class Simulator:
             if week != 0:
                 self.out_cash[week] += self.out_cash[week - 1]
 
-        self.assert_positive_balance()
         f = open(self.final_output_file, "w")
         for week, amount in enumerate(self.out_cash):
             f.write(f"{week} {amount}\n")
         f.close()
+
+        self.assert_positive_balance()
 
     def assert_positive_balance(self):
         for amount in self.out_cash:

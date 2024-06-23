@@ -1,3 +1,9 @@
+# Usage:
+# {time} START {amount} {balloon_payment} {duration}
+# {amount} is inclusive of {balloon_payment}
+# Actual balloon payment paid is {balloon_payment} specified plus interest it accrues over the loan term
+# {duration} is in years
+
 import math
 
 class CarLoan:

@@ -28,7 +28,10 @@ class Home:
                     if command == "BUY":
                         self.buy(amount, time)
                         self.out_cash_file_gen.add_bought_properties([self.properties[-1]])
-                    elif command == "SELL":
+                if len(input_line) == 2:
+                    time, command = input_line
+                    time = int(time)
+                    if command == "SELL":
                         self.sell(time)
                         self.out_cash_file_gen.add_sold_properties([self.sold_properties[-1]])
                 input_line = f.readline().split()
@@ -73,7 +76,8 @@ class InputFileGenerator:
             except:
                 pass
             try:
-                self.in_file.write(f"{week} SELL {self.sell_list[week]}\n")
+                temp = self.sell_list[week]
+                self.in_file.write(f"{week} SELL\n")
             except:
                 pass
             if week not in self.buy_list \
@@ -84,8 +88,8 @@ class InputFileGenerator:
     def buy(self, amount, time):
         self.buy_list[time] = amount
 
-    def sell(self, amount, time):
-        self.sell_list[time] = amount
+    def sell(self, time):
+        self.sell_list[time] = 0
 
 
 class OutputFileGenerator:

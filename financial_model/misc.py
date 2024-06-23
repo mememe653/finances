@@ -7,7 +7,7 @@ class InputFileGenerator:
         self.out_file = "misc.txt"
 
     def write(self):
-        # I am assuming self.expenses is sorted by week
+        self.expenses.sort(key=lambda x: x["time"])
         f = open(f"input_files/{self.out_file}", "w")
         for week in range(self.num_weeks):
             if len(self.expenses) == 0:
@@ -20,6 +20,7 @@ class InputFileGenerator:
                 self.expenses.pop(0)
                 if len(self.expenses) == 0:
                     break
+                time = self.expenses[0]["time"]
             f.write(f"{week} {amount}\n")
         f.close()
 

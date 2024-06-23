@@ -42,11 +42,13 @@ class HomeLoan:
             self.out_file_gen.write_output(self.loan_amount)
             if self.loan_amount > 0:
                 self.out_cash_file_gen.add_payment({
-                    "time": time,
+                    "time": week,
                     "amount": self.weekly_repayment
                 })
                 self.loan_amount *= 1 + self.weekly_interest_rate / 100
                 self.loan_amount -= self.weekly_repayment
+            else:
+                self.loan_amount = 0
         f.close()
         self.out_file_gen.generate_output_file()
         self.out_cash_file_gen.generate_output_file(num_weeks)

@@ -13,6 +13,8 @@ class Shares:
         self.in_file = in_file
         self.shares = []
         annual_ror = params["annual_ror"]
+        starting_balance = params["starting_balance"]
+        self.buy(starting_balance, 0)
         self.weekly_ror = 100 * (math.exp(math.log(1 + annual_ror / 100) / 52) - 1)
         self.out_file_gen = OutputFileGenerator()
         self.out_cash_file_gen = OutputCashFileGenerator()
@@ -69,7 +71,7 @@ class Shares:
             self.shares[0]["amount"] -= sell_amount * self.shares[0]["amount"] \
                     / self.shares[0]["buy_amount"]
             self.shares[0]["buy_amount"] -= sell_amount
-            if self.shares[0]["amount"] == 0:
+            if self.shares[0]["buy_amount"] == 0:
                 self.shares.pop(0)
             amount_remaining -= sell_amount
         return sold_shares

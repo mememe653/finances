@@ -128,6 +128,8 @@ class Super:
         self.in_file = in_file
         self.shares = []
         annual_ror = params["annual_ror"]
+        starting_balance = params["starting_balance"]
+        self.buy(starting_balance, 0)
         self.weekly_ror = 100 * (math.exp(math.log(1 + annual_ror / 100) / 52) - 1)
         self.out_file_gen = OutputFileGenerator()
         self.out_cash_file_gen = OutputCashFileGenerator()
@@ -145,7 +147,7 @@ class Super:
                     time, command, amount = input_line
                 elif len(input_line) == 4:
                     time, command, variant, amount = input_line
-                time, amount = int(time), int(amount)
+                time, amount = int(time), float(amount)
                 if command == "BUY":
                     if variant == "CC":
                         self.buy(amount, time)
@@ -163,8 +165,8 @@ class Super:
                 time = int(input_line[0])
             self.out_file_gen.write_output(self.shares)
             for share in self.shares:
-                share["taxed_amount"] *= 1 + self.weekly_ror / 100
                 share["untaxed_earnings"] *= 1 + self.weekly_ror / 100
+                share["untaxed_earnings"] += share["taxed_amount"] * self.weekly_ror / 100
             if week % 52 == 0:
                 self.tax(15)
         f.close()

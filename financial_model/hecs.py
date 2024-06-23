@@ -55,7 +55,9 @@ class Hecs:
         self.loan_amount -= amount
 
     def minimum_repayment(self, time):
-        # Add support for inflation
+        #TODO:Add support for inflation
+        #TODO:Fix this method, because each income bracket should be compared against
+        #     taxable income plus super contributions
         income_brackets = [51550, 59518, 63089, 66875, 70888, 75140, \
                             79649, 84429, 89494, 94865, 100557, 106590, \
                             112985, 119764, 126950, 134568, 142642, 151200]
@@ -144,9 +146,14 @@ class OutputCashFileGenerator:
 
 
 if __name__ == "__main__":
-    input_file_gen = InputFileGenerator(104)
+    num_weeks = 104
+    params = {
+            "annual_indexation_rate": 4
+        }
+
+    input_file_gen = InputFileGenerator(num_weeks)
     input_file_gen.buy(20000, 0)
     input_file_gen.write()
 
-    hecs = Hecs("input_files/hecs.txt")
-    hecs.simulate(104)
+    hecs = Hecs("input_files/hecs.txt", params)
+    hecs.simulate(num_weeks)
