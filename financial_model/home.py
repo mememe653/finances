@@ -11,7 +11,7 @@ class Home:
         self.in_file = in_file
         self.properties = []
         self.sold_properties = []
-        annual_ror = params["annual_ror"]
+        annual_ror = params["ANNUAL_ROR"]
         self.weekly_ror = 100 * (math.exp(math.log(1 + annual_ror / 100) / 52) - 1)
         self.out_file_gen = OutputFileGenerator()
         self.out_cash_file_gen = OutputCashFileGenerator()

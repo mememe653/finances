@@ -12,8 +12,8 @@ class Shares:
     def __init__(self, in_file, params):
         self.in_file = in_file
         self.shares = []
-        annual_ror = params["annual_ror"]
-        starting_balance = params["starting_balance"]
+        annual_ror = params["ANNUAL_ROR"]
+        starting_balance = params["STARTING_BALANCE"]
         self.buy(starting_balance, 0)
         self.weekly_ror = 100 * (math.exp(math.log(1 + annual_ror / 100) / 52) - 1)
         self.out_file_gen = OutputFileGenerator()

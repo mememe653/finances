@@ -6,7 +6,7 @@ class Hecs:
         self.income_file = open("input_files/income.txt", "r")
         self.out_file_gen = OutputFileGenerator()
         self.out_cash_file_gen = OutputCashFileGenerator()
-        self.interest_rate = params["annual_indexation_rate"]
+        self.interest_rate = params["ANNUAL_INDEXATION_RATE"]
         self.weekly_interest_rate = (math.exp(math.log(1 + self.interest_rate / 100) / 52) - 1) \
                                     * 100
 

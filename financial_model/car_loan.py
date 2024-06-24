@@ -11,7 +11,7 @@ class CarLoan:
         self.in_file = in_file
         self.out_file_gen = OutputFileGenerator()
         self.out_cash_file_gen = OutputCashFileGenerator()
-        self.interest_rate = params["annual_interest_rate"]
+        self.interest_rate = params["ANNUAL_INTEREST_RATE"]
         self.weekly_interest_rate = (math.exp(math.log(1 + self.interest_rate / 100) / 52) - 1) \
                                     * 100
 

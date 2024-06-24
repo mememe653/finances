@@ -11,41 +11,6 @@ import home_loan
 import car_loan
 import hecs
 
-class Parameters:
-    def shares():
-        return {
-                "annual_ror": 10,
-                "starting_balance": 135000
-            }
-
-    def super():
-        return {
-                "annual_ror": 10,
-                #"starting_balance": 17000
-                "starting_balance": 1
-            }
-
-    def home():
-        return {
-                "annual_ror": 8
-            }
-
-    def home_loan():
-        return {
-                "annual_interest_rate": 6
-            }
-
-    def car_loan():
-        return {
-                "annual_interest_rate": 6
-            }
-
-    def hecs():
-        return {
-                "annual_indexation_rate": 4
-            }
-
-
 class InflationAdjuster:
     def __init__(self, annual_inflation_rate):
         self.weekly_inflation_rate = (math.exp(math.log(1 + self.interest_rate / 100) / 52) - 1) \
@@ -57,7 +22,6 @@ class InflationAdjuster:
 
 class Simulator:
     def __init__(self):
-        self.starting_balance = 100
         self.output_cash_files = ["shares.txt",
                                     "super.txt",
                                     "home.txt",
@@ -67,6 +31,10 @@ class Simulator:
         self.output_tax_files = ["invoice.txt",
                                     "super_invoice.txt"]
         self.final_output_file = "output_files/cash.txt"
+        sim_params = self.get_params()
+        self.shares_params, self.super_params, self.home_params, \
+                self.home_loan_params, self.car_loan_params, self.hecs_params \
+                = sim_params
         #TODO:Adjust for inflation when generating input files
         #TODO:Add support for inflation in tax brackets
         starting_balance = 8000
@@ -75,12 +43,12 @@ class Simulator:
     def simulate(self, num_weeks):
         self.generate_input_files(num_weeks)
 
-        assets = [shares.Shares("input_files/shares.txt", Parameters.shares()),
-                    superannuation.Super("input_files/super.txt", Parameters.super()),
-                    home.Home("input_files/home.txt", Parameters.home()),
-                    home_loan.HomeLoan("input_files/home_loan.txt", Parameters.home_loan()),
-                    car_loan.CarLoan("input_files/car_loan.txt", Parameters.car_loan()),
-                    hecs.Hecs("input_files/hecs.txt", Parameters.hecs())]
+        assets = [shares.Shares("input_files/shares.txt", self.shares_params),
+                    superannuation.Super("input_files/super.txt", self.super_params),
+                    home.Home("input_files/home.txt", self.home_params),
+                    home_loan.HomeLoan("input_files/home_loan.txt", self.home_loan_params),
+                    car_loan.CarLoan("input_files/car_loan.txt", self.car_loan_params),
+                    hecs.Hecs("input_files/hecs.txt", self.hecs_params)]
         for asset in assets:
             asset.simulate(num_weeks)
 
@@ -91,6 +59,36 @@ class Simulator:
         self.parse_receipts()
 
         self.print_final_report(num_weeks)
+
+    def get_params(self):
+        params_file = open("input_files/params.txt", "r")
+        shares_params = {}
+        super_params = {}
+        home_params = {}
+        home_loan_params = {}
+        car_loan_params = {}
+        hecs_params = {}
+        input_line = params_file.readline()
+        while len(input_line) > 0:
+            input_line = input_line.split()
+            if len(input_line) == 3:
+                asset, param_name, param_value = input_line
+                if asset == "SHARES":
+                    shares_params[param_name] = int(param_value)
+                if asset == "SUPER":
+                    super_params[param_name] = int(param_value)
+                if asset == "HOME":
+                    home_params[param_name] = int(param_value)
+                if asset == "HOME_LOAN":
+                    home_loan_params[param_name] = int(param_value)
+                if asset == "CAR_LOAN":
+                    car_loan_params[param_name] = int(param_value)
+                if asset == "HECS":
+                    hecs_params[param_name] = int(param_value)
+            input_line = params_file.readline()
+        params_file.close()
+        return shares_params, super_params, home_params, home_loan_params, \
+                car_loan_params, hecs_params
 
     def generate_input_files(self, num_weeks):
         # Miscellaneous expenses
