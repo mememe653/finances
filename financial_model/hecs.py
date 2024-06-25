@@ -3,6 +3,7 @@ import math
 class Hecs:
     def __init__(self, in_file, params):
         self.in_file = in_file
+        self.brackets_file = open("input_files/hecs_brackets.txt", "r")
         self.income_file = open("input_files/income.txt", "r")
         self.out_file_gen = OutputFileGenerator()
         self.out_cash_file_gen = OutputCashFileGenerator()
@@ -44,6 +45,7 @@ class Hecs:
                 self.loan_amount *= 1 + self.weekly_interest_rate / 100
                 self.loan_amount -= self.weekly_repayment
         f.close()
+        self.brackets_file.close()
         self.income_file.close()
         self.out_file_gen.generate_output_file()
         self.out_cash_file_gen.generate_output_file(num_weeks)
@@ -55,14 +57,23 @@ class Hecs:
         self.loan_amount -= amount
 
     def minimum_repayment(self, time):
-        #TODO:Add support for inflation
         #TODO:Fix this method, because each income bracket should be compared against
         #     taxable income plus super contributions
-        income_brackets = [51550, 59518, 63089, 66875, 70888, 75140, \
-                            79649, 84429, 89494, 94865, 100557, 106590, \
-                            112985, 119764, 126950, 134568, 142642, 151200]
-        repayment_rates = [0, 1, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, \
-                            8, 8.5, 9, 9.5, 10]
+        income_brackets = []
+        repayment_rates = []
+        while len(income_brackets) == 0 or len(repayment_rates) == 0:
+            input_line = self.brackets_file.readline().split()
+            if len(input_line) > 0:
+                week = int(input_line[0])
+                command = input_line[1]
+                if week == time:
+                    if command == "RATES":
+                        for i in range(2, len(input_line)):
+                            repayment_rates.append(float(input_line[i]))
+                    if command == "BRACKETS":
+                        for i in range(2, len(input_line)):
+                            income_brackets.append(int(input_line[i]))
+
         week, weekly_income = self.income_file.readline().split()
         week = int(week)
         while week != time:

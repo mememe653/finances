@@ -19,8 +19,6 @@ class TaxCollector:
 
 class IncomeTaxCollector:
     def __init__(self):
-        self.tax_brackets = [18200, 45000, 120000, 180000]
-        self.mtr = [19, 32.5, 37, 45]
         self.tax_collectors = [self, SharesTaxCollector(), SuperTaxCollector()]
         self.taxable_income = []
         for tax_collector in self.tax_collectors:
@@ -50,21 +48,38 @@ class IncomeTaxCollector:
         return total_taxable_income
 
     def apply_tax(self):
+        brackets_file = open("input_files/tax_brackets.txt", "r")
         tax_file = open("output_files/tax/invoice.txt", "w")
         super_cc_contribs = SuperTaxCollector().get_cc_contribs()
         for year, taxable_income in enumerate(self.taxable_income):
+            tax_brackets = []
+            tax_rates = []
+            while len(tax_brackets) == 0 or len(tax_rates) == 0:
+                input_line = brackets_file.readline().split()
+                if len(input_line) > 0:
+                    time = int(input_line[0])
+                    command = input_line[1]
+                    if year == time:
+                        if command == "RATES":
+                            for i in range(2, len(input_line)):
+                                tax_rates.append(float(input_line[i]))
+                        if command == "BRACKETS":
+                            for i in range(2, len(input_line)):
+                                tax_brackets.append(int(input_line[i]))
+
             tax = 0
             idx = 0
-            while taxable_income > self.tax_brackets[idx]:
-                if idx >= len(self.tax_brackets) - 1:
+            while taxable_income > tax_brackets[idx]:
+                if idx >= len(tax_brackets) - 1:
                     break
-                tax += self.mtr[idx] / 100 * (min(taxable_income, self.tax_brackets[idx + 1]) \
-                        - self.tax_brackets[idx])
+                tax += tax_rates[idx] / 100 * (min(taxable_income, tax_brackets[idx + 1]) \
+                        - tax_brackets[idx])
                 idx += 1
-            if taxable_income > self.tax_brackets[-1]:
-                tax += self.mtr[-1] / 100 * (taxable_income - self.tax_brackets[-1])
+            if taxable_income > tax_brackets[-1]:
+                tax += tax_rates[-1] / 100 * (taxable_income - tax_brackets[-1])
             tax += 0.15 * super_cc_contribs[year]
             tax_file.write(f"{year} {tax}\n")
+        brackets_file.close()
         tax_file.close()
 
     def parse_receipts(self, tax_receipts):
@@ -100,8 +115,6 @@ class SuperTaxCollector:
     def __init__(self):
         self.taxed_amount = []
         self.untaxed_amount = []
-        self.tax_brackets = [18200, 45000, 120000, 180000]
-        self.mtr = [19, 32.5, 37, 45]
         self.parse_receipt()
 
     def get_taxable_income(self):
@@ -159,27 +172,44 @@ class SuperTaxCollector:
         tax_receipt.close()
 
     def apply_tax(self):
+        brackets_file = open("input_files/tax_brackets.txt", "r")
         tax_file = open("output_files/tax/super_invoice.txt", "w")
         total_taxable_income = IncomeTaxCollector().taxable_income
         #total_taxable_income = IncomeTaxCollector().get_taxable_income()
         for year, taxable_income in enumerate(total_taxable_income):
+            tax_brackets = []
+            tax_rates = []
+            while len(tax_brackets) == 0 or len(tax_rates) == 0:
+                input_line = brackets_file.readline().split()
+                if len(input_line) > 0:
+                    time = int(input_line[0])
+                    command = input_line[1]
+                    if year == time:
+                        if command == "RATES":
+                            for i in range(2, len(input_line)):
+                                tax_rates.append(float(input_line[i]))
+                        if command == "BRACKETS":
+                            for i in range(2, len(input_line)):
+                                tax_brackets.append(int(input_line[i]))
+
             tax = 0
             idx = 0
             self.taxed_amount[year] += 0.15 * self.untaxed_amount[year]
             tax += 0.15 * self.untaxed_amount[year]
-            while idx < len(self.tax_brackets) \
-            and taxable_income > self.tax_brackets[idx]:
+            while idx < len(tax_brackets) \
+            and taxable_income > tax_brackets[idx]:
                 idx += 1
-            while idx < len(self.tax_brackets) \
-            and taxable_income + self.taxed_amount[year] > self.tax_brackets[idx-1]:
-                tax += (self.mtr[idx-1] - 30) / 100 * (min(taxable_income + \
-                        self.taxed_amount[year], self.tax_brackets[idx]) \
-                        - max(taxable_income, self.tax_brackets[idx-1]))
+            while idx < len(tax_brackets) \
+            and taxable_income + self.taxed_amount[year] > tax_brackets[idx-1]:
+                tax += (tax_rates[idx-1] - 30) / 100 * (min(taxable_income + \
+                        self.taxed_amount[year], tax_brackets[idx]) \
+                        - max(taxable_income, tax_brackets[idx-1]))
                 idx += 1
-            if taxable_income + self.taxed_amount[year] > self.tax_brackets[-1]:
-                tax += (self.mtr[-1] - 30) / 100 * (taxable_income + \
-                        self.taxed_amount[year] - max(taxable_income, self.tax_brackets[-1]))
+            if taxable_income + self.taxed_amount[year] > tax_brackets[-1]:
+                tax += (tax_rates[-1] - 30) / 100 * (taxable_income + \
+                        self.taxed_amount[year] - max(taxable_income, tax_brackets[-1]))
             tax_file.write(f"{year} {tax}\n")
+        brackets_file.close()
         tax_file.close()
 
 

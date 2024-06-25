@@ -90,6 +90,41 @@ class Simulator:
         return shares_params, super_params, home_params, home_loan_params, \
                 car_loan_params, hecs_params
 
+    def generate_tax_brackets(self, num_weeks):
+        params_file = open("input_files/tax_brackets.txt", "w")
+        tax_brackets = [18200, 45000, 120000, 180000]
+        mtr = [19, 32.5, 37, 45]
+        for year in range(num_weeks // 52):
+            params_file.write(f"{year} RATES ")
+            for rate in mtr:
+                params_file.write(f"{rate} ")
+            params_file.write("\n")
+            params_file.write(f"{year} BRACKETS ")
+            for bracket in tax_brackets:
+                params_file.write(f"{bracket} ")
+            params_file.write("\n")
+            params_file.write("\n")
+        params_file.close()
+    
+    def generate_hecs_brackets(self, num_weeks):
+        params_file = open("input_files/hecs_brackets.txt", "w")
+        repayment_rates = [0, 1, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, \
+                            8, 8.5, 9, 9.5, 10]
+        income_brackets = [51550, 59518, 63089, 66875, 70888, 75140, \
+                            79649, 84429, 89494, 94865, 100557, 106590, \
+                            112985, 119764, 126950, 134568, 142642, 151200]
+        for week in range(num_weeks):
+            params_file.write(f"{week} RATES ")
+            for rate in repayment_rates:
+                params_file.write(f"{rate} ")
+            params_file.write("\n")
+            params_file.write(f"{week} BRACKETS ")
+            for bracket in income_brackets:
+                params_file.write(f"{bracket} ")
+            params_file.write("\n")
+            params_file.write("\n")
+        params_file.close()
+
     def generate_input_files(self, num_weeks):
         # Miscellaneous expenses
         misc_file_gen = misc.InputFileGenerator(num_weeks)
@@ -176,6 +211,12 @@ class Simulator:
         in_file_gen.write()
 
         misc_file_gen.write()
+
+        # HECS brackets
+        self.generate_hecs_brackets(num_weeks)
+
+        # Tax brackets
+        self.generate_tax_brackets(num_weeks)
 
     def parse_receipts(self):
         income_file = open("input_files/income.txt", "r")
