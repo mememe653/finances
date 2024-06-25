@@ -32,13 +32,12 @@ class Simulator:
                                     "super_invoice.txt"]
         self.final_output_file = "output_files/cash.txt"
         sim_params = self.get_params()
-        self.shares_params, self.super_params, self.home_params, \
+        self.cash_params, self.shares_params, self.super_params, self.home_params, \
                 self.home_loan_params, self.car_loan_params, self.hecs_params \
                 = sim_params
         #TODO:Adjust for inflation when generating input files
         #TODO:Add support for inflation in tax brackets
-        starting_balance = 8000
-        self.out_cash = [starting_balance]
+        self.out_cash = [self.cash_params["STARTING_BALANCE"]]
 
     def simulate(self, num_weeks):
         self.generate_input_files(num_weeks)
@@ -62,6 +61,7 @@ class Simulator:
 
     def get_params(self):
         params_file = open("input_files/params.txt", "r")
+        cash_params = {}
         shares_params = {}
         super_params = {}
         home_params = {}
@@ -73,6 +73,8 @@ class Simulator:
             input_line = input_line.split()
             if len(input_line) == 3:
                 asset, param_name, param_value = input_line
+                if asset == "CASH":
+                    cash_params[param_name] = int(param_value)
                 if asset == "SHARES":
                     shares_params[param_name] = int(param_value)
                 if asset == "SUPER":
@@ -87,7 +89,7 @@ class Simulator:
                     hecs_params[param_name] = int(param_value)
             input_line = params_file.readline()
         params_file.close()
-        return shares_params, super_params, home_params, home_loan_params, \
+        return cash_params, shares_params, super_params, home_params, home_loan_params, \
                 car_loan_params, hecs_params
 
     def generate_tax_brackets(self, num_weeks):
