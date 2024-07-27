@@ -65,7 +65,7 @@ class IncomeTaxCollector:
                                 tax_rates.append(float(input_line[i]))
                         if command == "BRACKETS":
                             for i in range(2, len(input_line)):
-                                tax_brackets.append(int(input_line[i]))
+                                tax_brackets.append(float(input_line[i]))
 
             tax = 0
             idx = 0
@@ -190,7 +190,7 @@ class SuperTaxCollector:
                                 tax_rates.append(float(input_line[i]))
                         if command == "BRACKETS":
                             for i in range(2, len(input_line)):
-                                tax_brackets.append(int(input_line[i]))
+                                tax_brackets.append(float(input_line[i]))
 
             tax = 0
             idx = 0

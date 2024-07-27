@@ -72,14 +72,14 @@ class Hecs:
                             repayment_rates.append(float(input_line[i]))
                     if command == "BRACKETS":
                         for i in range(2, len(input_line)):
-                            income_brackets.append(int(input_line[i]))
+                            income_brackets.append(float(input_line[i]))
 
         week, weekly_income = self.income_file.readline().split()
         week = int(week)
         while week != time:
             week, weekly_income = self.income_file.readline().split()
             week = int(week)
-        weekly_income = int(weekly_income)
+        weekly_income = float(weekly_income)
         annual_income = weekly_income * 52
         for i, income_bracket in enumerate(income_brackets):
             if annual_income < income_bracket:

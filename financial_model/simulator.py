@@ -11,13 +11,55 @@ import home_loan
 import car_loan
 import hecs
 
-class InflationAdjuster:
-    def __init__(self, annual_inflation_rate):
-        self.weekly_inflation_rate = (math.exp(math.log(1 + self.interest_rate / 100) / 52) - 1) \
-                                        * 100
+import math
 
-    def apply_inflation(self, amount, time):
-        return amount * self.weekly_inflation_rate ** time
+def create_inflation_adjuster(annual_inflation_rate):
+    def apply_inflation(amount, time):
+        weekly_inflation_rate = (math.exp(math.log(1 + annual_inflation_rate / 100) / 52) - 1) \
+                                    * 100
+        return amount * (1 + weekly_inflation_rate / 100) ** time
+    return apply_inflation
+
+def reset_input_files(num_weeks, inputs):
+    if "SHARES" in inputs:
+        in_file_gen = shares.InputFileGenerator(num_weeks)
+        amount = 1
+        week = 0
+        in_file_gen.buy(amount, week)
+        in_file_gen.write()
+    if "SUPER" in inputs:
+        in_file_gen = superannuation.InputFileGenerator(num_weeks)
+        amount = 1
+        week = 0
+        in_file_gen.buy(amount, "CC", week)
+        in_file_gen.write()
+    if "HOME" in inputs:
+        in_file_gen = home.InputFileGenerator(num_weeks)
+        amount = 1
+        week = 0
+        in_file_gen.buy(amount, week)
+        in_file_gen.write()
+    if "HOME_LOAN" in inputs:
+        in_file_gen = home_loan.InputFileGenerator(num_weeks)
+        amount = 1
+        start_week = 0
+        duration_years = 1
+        in_file_gen.buy(amount, start_week, duration_years)
+        in_file_gen.write()
+    if "CAR_LOAN" in inputs:
+        in_file_gen = car_loan.InputFileGenerator(num_weeks)
+        amount = 1
+        balloon_payment = 0
+        start_week = 0
+        duration_years = 1
+        in_file_gen.buy(amount, balloon_payment, start_week, duration_years)
+        in_file_gen.write()
+    if "HECS" in inputs:
+        in_file_gen = hecs.InputFileGenerator(num_weeks)
+        amount = 1
+        start_week = 0
+        in_file_gen.buy(amount, start_week)
+        in_file_gen.write()
 
 
 class Simulator:
@@ -37,7 +79,12 @@ class Simulator:
                 = sim_params
         #TODO:Adjust for inflation when generating input files
         #TODO:Add support for inflation in tax brackets
+        #TODO:Re-initialise all input files when generating them instead of commenting code out
+        #     Could re-write them with initial values at end of generate_input_files()
+        #TODO:Create an experiments Python file from which I can import my experiments so I don't delete the code
         self.out_cash = [self.cash_params["STARTING_BALANCE"]]
+        #TODO:Add annual inflation rate parameter to input_files/params.txt
+        self.apply_inflation = create_inflation_adjuster(3)
 
     def simulate(self, num_weeks):
         self.generate_input_files(num_weeks)
@@ -103,7 +150,8 @@ class Simulator:
             params_file.write("\n")
             params_file.write(f"{year} BRACKETS ")
             for bracket in tax_brackets:
-                params_file.write(f"{bracket} ")
+                #params_file.write(f"{bracket} ")
+                params_file.write(f"{self.apply_inflation(bracket, 52 * year)} ")
             params_file.write("\n")
             params_file.write("\n")
         params_file.close()
@@ -122,97 +170,181 @@ class Simulator:
             params_file.write("\n")
             params_file.write(f"{week} BRACKETS ")
             for bracket in income_brackets:
-                params_file.write(f"{bracket} ")
+                #params_file.write(f"{bracket} ")
+                params_file.write(f"{self.apply_inflation(bracket, week)} ")
             params_file.write("\n")
             params_file.write("\n")
         params_file.close()
 
-    def generate_input_files(self, num_weeks):
-        # Miscellaneous expenses
+    def comprehensive_experiment(self, num_weeks):
         misc_file_gen = misc.InputFileGenerator(num_weeks)
 
         # Income
-        in_file_gen = income.InputFileGenerator(num_weeks)
+        income_file_gen = income.InputFileGenerator(num_weeks)
         weekly_income = int(75000 / 52)
         for week in range(num_weeks):
-            in_file_gen.add(week, weekly_income)
-        in_file_gen.write()
+            income_file_gen.add(week, self.apply_inflation(weekly_income, week))
+        home_loan_start_year = 2
+        weekly_expenses = 500
+        for week in range(home_loan_start_year * 52, num_weeks):
+            misc_file_gen.add(week, self.apply_inflation(weekly_expenses, week))
 
-        #amount = 1
-        #week = 0
-        #misc_file_gen.add(week, amount)
+        # Super
+        super_file_gen = superannuation.InputFileGenerator(num_weeks)
+        employer_super_contribution = 0.11 * weekly_income
+        for week in range(num_weeks):
+            super_file_gen.buy(self.apply_inflation(employer_super_contribution, week), "CC", week)
+        for week in range(15):
+            super_file_gen.buy(self.apply_inflation(employer_super_contribution, week) \
+                                + 1000, "CC", week)
+        for week in range(1 * 52, 1 * 52 + 15):
+            super_file_gen.buy(self.apply_inflation(employer_super_contribution, week) \
+                                + 1000, "CC", week)
+        #for week in range(15):
+            #super_file_gen.buy(1000, "CC", week)
+        #for week in range(1 * 52, 1 * 52 + 15):
+            #super_file_gen.buy(1000, "CC", week)
+        #fhss_yearly_cap = 15000
+        #super_file_gen.buy(fhss_yearly_cap, "CC", 0)
+        #super_file_gen.buy(fhss_yearly_cap, "CC", 1 * 52)
+        fhss_yearly_cap = 15000
+        fhss_total_earnings = 3992 # This number is correct, at least until I change parameters
+        super_file_gen.sell(2 * fhss_yearly_cap + fhss_total_earnings, home_loan_start_year * 52)
+        #super_cc_yearly_cap = 30000
+        #num_contribs = 8
+        #for year in range(home_loan_start_year + 1, home_loan_start_year + 1 + num_contribs):
+            #week = year * 52
+            #super_file_gen.buy(self.apply_inflation(super_cc_yearly_cap, week), "CC", week)
+
+        # Home
+        home_file_gen = home.InputFileGenerator(num_weeks)
+        home_purchase_price = 500000
+        home_file_gen.buy(home_purchase_price, home_loan_start_year * 52)
+        misc_file_gen.add(home_loan_start_year * 52, -200000)
+
+        # Home Loan
+        home_loan_file_gen = home_loan.InputFileGenerator(num_weeks)
+        loan_amount = 0.8 * home_purchase_price
+        loan_duration_years = 30
+        home_loan_file_gen.buy(loan_amount, home_loan_start_year * 52, loan_duration_years)
+
+        # Car Loan
+        car_loan_file_gen = car_loan.InputFileGenerator(num_weeks)
+        balloon_payment = 0
+        start_week = 10 * 52
+        loan_duration_years = 5
+        loan_amount = self.apply_inflation(25000, start_week)
+        car_loan_file_gen.buy(loan_amount, balloon_payment, start_week, loan_duration_years)
+
+        misc_file_gen.write()
+        income_file_gen.write()
+        super_file_gen.write()
+        home_file_gen.write()
+        home_loan_file_gen.write()
+        car_loan_file_gen.write()
+
+        #reset_inputs = ["SHARES",
+                        #"CAR_LOAN"]
+        #reset_input_files(num_weeks, reset_inputs)
+
+    def generate_input_files(self, num_weeks):
+        self.comprehensive_experiment(num_weeks)
+        #self.car_loan_experiment1(num_weeks)
+        #self.car_loan_experiment2(num_weeks)
+        #self.car_loan_experiment3(num_weeks)
+        #self.car_loan_experiment4(num_weeks)
+
+        # Income
+        #in_file_gen = income.InputFileGenerator(num_weeks)
+        #weekly_income = int(75000 / 52)
+        #for week in range(num_weeks):
+            ##in_file_gen.add(week, weekly_income)
+            #in_file_gen.add(week, self.inflation_adjuster.apply_inflation(weekly_income, week))
+        #misc_file_gen.add(0, self.cash_params["STARTING_BALANCE"])
+        #in_file_gen.write()
+
+        ##amount = 1
+        ##week = 0
+        ##misc_file_gen.add(week, amount)
 
         # Shares
-        in_file_gen = shares.InputFileGenerator(num_weeks)
+        #in_file_gen = shares.InputFileGenerator(num_weeks)
+        ##amount = 1
+        ##week = 0
+        ##in_file_gen.buy(amount, week)
+        #total_amount = 0
+        #for week in range(5 * 52):
+            #amount = self.inflation_adjuster.apply_inflation(weekly_income, week)
+            #in_file_gen.buy(amount, week)
+            #total_amount += amount
+        #in_file_gen.sell(total_amount, 5 * 52)
+        ##total_amount = 0
+        ##for week in range(15, 2 * 52):
+            ##in_file_gen.buy(1000, week)
+            ##total_amount += 1000
+        ##in_file_gen.sell(135000 + total_amount, 2 * 52)
+        #in_file_gen.write()
+
+        # Super
+        #in_file_gen = superannuation.InputFileGenerator(num_weeks)
+        ##super_amount = 0.11 * weekly_income
+        ##variant = "CC"
+        ##week = 0
+        ##for week in range(num_weeks):
+            ##in_file_gen.buy(super_amount, variant, week)
+            ##misc_file_gen.add(week, -0.15 * super_amount)
+        ##for week in range(15):
+            ##in_file_gen.buy(1000, "CC", week)
+        ##in_file_gen.sell(15000 + 2700, 2 * 52)
+        #in_file_gen.buy(1, "CC", 0)
+        #in_file_gen.write()
+
+        # Home
+        #in_file_gen = home.InputFileGenerator(num_weeks)
+        ##amount = 500000
+        ##week = 2 * 52
         #amount = 1
         #week = 0
         #in_file_gen.buy(amount, week)
-        total_amount = 0
-        for week in range(15, 2 * 52):
-            in_file_gen.buy(1000, week)
-            total_amount += 1000
-        in_file_gen.sell(135000 + total_amount, 2 * 52)
-        in_file_gen.write()
-
-        # Super
-        in_file_gen = superannuation.InputFileGenerator(num_weeks)
-        super_amount = 0.11 * weekly_income
-        variant = "CC"
-        week = 0
-        #for week in range(num_weeks):
-            #in_file_gen.buy(super_amount, variant, week)
-            #misc_file_gen.add(week, -0.15 * super_amount)
-        for week in range(15):
-            in_file_gen.buy(1000, "CC", week)
-        in_file_gen.sell(15000 + 2700, 2 * 52)
-        #in_file_gen.buy(1, "CC", 0)
-        in_file_gen.write()
-
-        # Home
-        in_file_gen = home.InputFileGenerator(num_weeks)
-        amount = 500000
-        week = 2 * 52
-        #amount = 1
-        #week = 0
-        in_file_gen.buy(amount, week)
-        #in_file_gen.sell(3 * 52)
-        in_file_gen.write()
+        ##in_file_gen.sell(3 * 52)
+        #in_file_gen.write()
 
         # Home loan
-        in_file_gen = home_loan.InputFileGenerator(num_weeks)
-        amount = 300000
-        start_week = 2 * 52
-        duration_years = 30
+        #in_file_gen = home_loan.InputFileGenerator(num_weeks)
+        ##amount = 300000
+        ##start_week = 2 * 52
+        ##duration_years = 30
         #amount = 1
         #start_week = 0
         #duration_years = 1
-        in_file_gen.buy(amount, start_week, duration_years)
-        in_file_gen.write()
+        #in_file_gen.buy(amount, start_week, duration_years)
+        #in_file_gen.write()
 
         # Car loan
-        in_file_gen = car_loan.InputFileGenerator(num_weeks)
-        #amount = 30000
-        #balloon_payment = 5000
-        #start_week = 10 * 52
+        #in_file_gen = car_loan.InputFileGenerator(num_weeks)
+        #balloon_payment = 0
+        #start_week = 17
         #duration_years = 5
-        amount = 1
-        balloon_payment = 0
-        start_week = 0
-        duration_years = 1
-        in_file_gen.buy(amount, balloon_payment, start_week, duration_years)
-        in_file_gen.write()
+        #amount = 25000
+        ##amount = self.inflation_adjuster.apply_inflation(amount, start_week)
+        ##amount = 1
+        ##balloon_payment = 0
+        ##start_week = 0
+        ##duration_years = 1
+        #in_file_gen.buy(amount, balloon_payment, start_week, duration_years)
+        #in_file_gen.write()
 
         # HECS
-        in_file_gen = hecs.InputFileGenerator(num_weeks)
-        #amount = 25000
+        #in_file_gen = hecs.InputFileGenerator(num_weeks)
+        ##amount = 25000
+        ##start_week = 0
+        #amount = 1
         #start_week = 0
-        amount = 1
-        start_week = 0
-        in_file_gen.buy(amount, start_week)
-        #in_file_gen.pay(10000, 52)
-        in_file_gen.write()
+        #in_file_gen.buy(amount, start_week)
+        ##in_file_gen.pay(10000, 52)
+        #in_file_gen.write()
 
-        misc_file_gen.write()
+        #misc_file_gen.write()
 
         # HECS brackets
         self.generate_hecs_brackets(num_weeks)
@@ -296,6 +428,214 @@ class Simulator:
         for amount in self.out_cash:
             #print(amount)
             assert amount >= 0
+    
+    def car_loan_experiment1(self, num_weeks):
+        misc_file_gen = misc.InputFileGenerator(num_weeks)
+        misc_file_gen.add(0, -60) # Because HECS
+        tax = [15312, 15925, 16562, 17224, 17913]
+        tax = [yearly_tax / 52 for yearly_tax in tax]
+
+        # Experiment 1 - Buying car without loan
+        # Parameters
+        loan_duration_years = 5
+        weekly_expenses = 0
+
+        # Income
+        in_file_gen = income.InputFileGenerator(num_weeks)
+        weekly_income = int(75000 / 52)
+        misc_file_gen.add(0, self.cash_params["STARTING_BALANCE"])
+        for week in range(num_weeks):
+            in_file_gen.add(week, self.apply_inflation(weekly_income, week))
+            misc_file_gen.add(week, self.apply_inflation(weekly_expenses, week))
+        in_file_gen.write()
+
+        # Shares
+        in_file_gen = shares.InputFileGenerator(num_weeks)
+        total_amount = 0
+        for week in range(loan_duration_years * 52):
+            amount = self.apply_inflation(weekly_income - weekly_expenses, week) - tax[week // 52]
+            in_file_gen.buy(amount, week)
+            total_amount += amount
+        in_file_gen.sell(total_amount, loan_duration_years * 52 - 1)
+        in_file_gen.write()
+
+        # Car loan
+        in_file_gen = car_loan.InputFileGenerator(num_weeks)
+        balloon_payment = 0
+        start_week = 0
+        amount = 1
+        in_file_gen.buy(amount, balloon_payment, start_week, loan_duration_years)
+        in_file_gen.write()
+        misc_file_gen.write()
+
+        reset_inputs = ["SUPER",
+                        "HOME",
+                        "HOME_LOAN",
+                        "HECS"]
+        reset_input_files(num_weeks, reset_inputs)
+
+    def car_loan_experiment2(self, num_weeks):
+        misc_file_gen = misc.InputFileGenerator(num_weeks)
+        misc_file_gen.add(0, -60) # Because HECS
+        tax = [15312, 15925, 16562, 17224, 17913]
+        tax = [yearly_tax / 52 for yearly_tax in tax]
+
+        # Experiment 2 - Buying car with loan
+        # Parameters
+        loan_duration_years = 5
+        balloon_payment = 0
+        weekly_loan_repayment = 123 # Need to set this manually
+        weekly_expenses = 0
+
+        # Income
+        in_file_gen = income.InputFileGenerator(num_weeks)
+        weekly_income = int(75000 / 52)
+        for week in range(num_weeks):
+            in_file_gen.add(week, self.apply_inflation(weekly_income, week))
+            misc_file_gen.add(week, self.apply_inflation(weekly_expenses, week))
+        in_file_gen.write()
+
+        # Shares
+        in_file_gen = shares.InputFileGenerator(num_weeks)
+        total_amount = 0
+        amount = self.cash_params["STARTING_BALANCE"]
+        #in_file_gen.buy(amount, 0)
+        #total_amount += amount
+        for week in range(loan_duration_years * 52):
+            amount += self.apply_inflation(weekly_income, week) \
+                    - self.apply_inflation(weekly_expenses, week) \
+                    - weekly_loan_repayment \
+                    - tax[week // 52]
+            in_file_gen.buy(amount, week)
+            total_amount += amount
+            amount = 0
+        in_file_gen.sell(total_amount, loan_duration_years * 52 - 1)
+        in_file_gen.write()
+
+        # Car loan
+        in_file_gen = car_loan.InputFileGenerator(num_weeks)
+        start_week = 0
+        amount = self.cash_params["STARTING_BALANCE"]
+        in_file_gen.buy(amount, balloon_payment, start_week, loan_duration_years)
+        in_file_gen.write()
+
+        misc_file_gen.write()
+
+        reset_inputs = ["SUPER",
+                        "HOME",
+                        "HOME_LOAN",
+                        "HECS"]
+        reset_input_files(num_weeks, reset_inputs)
+
+    def car_loan_experiment3(self, num_weeks):
+        misc_file_gen = misc.InputFileGenerator(num_weeks)
+        misc_file_gen.add(0, -60) # Because HECS
+        tax = [15444, 15925, 16562, 17224, 17913, 18629]
+        tax = [yearly_tax / 52 for yearly_tax in tax]
+
+        # Experiment 3 - Saving up to buy car without loan
+        # Parameters
+        car_cost = 25000
+        num_shares_for_car = 24926
+        loan_duration_years = 5
+        weekly_expenses = 0
+
+        # Income
+        in_file_gen = income.InputFileGenerator(num_weeks)
+        weekly_income = int(75000 / 52)
+        for week in range(num_weeks):
+            in_file_gen.add(week, self.apply_inflation(weekly_income, week))
+            misc_file_gen.add(week, self.apply_inflation(weekly_expenses, week))
+        in_file_gen.write()
+
+        # Shares
+        in_file_gen = shares.InputFileGenerator(num_weeks)
+        bought_car = False
+        total_amount = 0
+        for week in range(num_weeks):
+            amount = self.apply_inflation(weekly_income - weekly_expenses, week) - tax[week // 52]
+            in_file_gen.buy(amount, week)
+            total_amount += amount
+            if total_amount >= num_shares_for_car and not bought_car:
+                print(self.apply_inflation(car_cost, week))
+                in_file_gen.sell(num_shares_for_car, week)
+                misc_file_gen.add(week, self.apply_inflation(car_cost, week))
+                bought_car = True
+        total_amount -= num_shares_for_car
+        in_file_gen.sell(total_amount, num_weeks - 1)
+        in_file_gen.write()
+
+        # Car loan
+        in_file_gen = car_loan.InputFileGenerator(num_weeks)
+        balloon_payment = 0
+        start_week = 0
+        amount = 1
+        in_file_gen.buy(amount, balloon_payment, start_week, loan_duration_years)
+        in_file_gen.write()
+
+        misc_file_gen.write()
+
+        reset_inputs = ["SUPER",
+                        "HOME",
+                        "HOME_LOAN",
+                        "HECS"]
+        reset_input_files(num_weeks, reset_inputs)
+
+    def car_loan_experiment4(self, num_weeks):
+        misc_file_gen = misc.InputFileGenerator(num_weeks)
+        misc_file_gen.add(0, -60) # Because HECS
+        tax = [15444, 15925, 16562, 17224, 17913, 18629]
+        tax = [yearly_tax / 52 for yearly_tax in tax]
+
+        # Experiment 4 - Buying car with loan then saving afterwards
+        # Parameters
+        car_cost = 25000
+        loan_duration_years = 5
+        balloon_payment = 0
+        weekly_loan_repayment = 115 # Need to set this manually
+        weekly_expenses = 0
+
+        # Income
+        in_file_gen = income.InputFileGenerator(num_weeks)
+        weekly_income = int(75000 / 52)
+        for week in range(num_weeks):
+            in_file_gen.add(week, self.apply_inflation(weekly_income, week))
+            misc_file_gen.add(week, self.apply_inflation(weekly_expenses, week))
+        in_file_gen.write()
+
+        # Shares
+        in_file_gen = shares.InputFileGenerator(num_weeks)
+        total_amount = 0
+        amount = self.cash_params["STARTING_BALANCE"]
+        for week in range(loan_duration_years * 52):
+            amount += self.apply_inflation(weekly_income, week) \
+                    - self.apply_inflation(weekly_expenses, week) \
+                    - weekly_loan_repayment \
+                    - tax[week // 52]
+            in_file_gen.buy(amount, week)
+            total_amount += amount
+            amount = 0
+        for week in range(loan_duration_years * 52, num_weeks):
+            amount = self.apply_inflation(weekly_income - weekly_expenses, week) - tax[week // 52]
+            in_file_gen.buy(amount, week)
+            total_amount += amount
+        in_file_gen.sell(total_amount, num_weeks - 1)
+        in_file_gen.write()
+
+        # Car loan
+        in_file_gen = car_loan.InputFileGenerator(num_weeks)
+        start_week = 0
+        amount = car_cost
+        in_file_gen.buy(amount, balloon_payment, start_week, loan_duration_years)
+        in_file_gen.write()
+
+        misc_file_gen.write()
+
+        reset_inputs = ["SUPER",
+                        "HOME",
+                        "HOME_LOAN",
+                        "HECS"]
+        reset_input_files(num_weeks, reset_inputs)
 
     def print_final_report(self, num_weeks):
         out_cash_file = open("output_files/cash.txt", "r")
@@ -365,5 +705,5 @@ class Simulator:
 
 
 if __name__ == "__main__":
-    num_weeks = 1040
+    num_weeks = 34 * 52
     Simulator().simulate(num_weeks)

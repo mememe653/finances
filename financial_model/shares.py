@@ -28,7 +28,7 @@ class Shares:
             while time == week:
                 if len(input_line) == 3:
                     time, command, amount = input_line
-                    time, amount = int(time), int(amount)
+                    time, amount = int(time), float(amount)
                     if command == "BUY":
                         self.buy(amount, time)
                         self.out_cash_file_gen.add_bought_shares(amount, time)

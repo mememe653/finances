@@ -28,7 +28,7 @@ class CarLoan:
             while time == week:
                 if len(input_line) == 5:
                     time, command, amount, balloon_payment, duration = input_line
-                    time, amount, balloon_payment = int(time), int(amount), int(balloon_payment)
+                    time, amount, balloon_payment = int(time), float(amount), int(balloon_payment)
                     duration = int(duration)
                     if command == "START":
                         self.buy(amount, balloon_payment, time, duration)

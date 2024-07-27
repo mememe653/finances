@@ -19,7 +19,7 @@ class HomeLoan:
             while time == week:
                 if len(input_line) == 4:
                     time, command, amount, duration = input_line
-                    time, amount, duration = int(time), int(amount), int(duration)
+                    time, amount, duration = int(time), float(amount), int(duration)
                     if command == "START":
                         self.buy(amount, time)
                         self.out_cash_file_gen.add_loan(amount, time)
