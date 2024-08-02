@@ -1,0 +1,19 @@
+use std::fs;
+use std::collections::HashMap;
+
+//TODO:Have single source of truth for NUM_TIMESTEPS
+const NUM_TIMESTEPS: usize = 35 * 52;
+
+pub fn parse_input(file_path: &str) -> [f64; NUM_TIMESTEPS] {
+    let mut income = [0.0; NUM_TIMESTEPS];
+    let input_lines = fs::read_to_string(file_path)
+        .expect("Invalid file path");
+    for line in input_lines.lines() {
+        let fields: Vec<&str> = line.split_whitespace()
+                                    .collect();
+        let time: usize = fields[0].parse().unwrap();
+        let amount: f64 = fields[1].parse().unwrap();
+        income[time] += amount;
+    }
+    income
+}
