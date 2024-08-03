@@ -103,8 +103,40 @@ impl Params {
     }
 }
 
-//TODO:Implement Transaction
-pub struct Transaction {}
+struct BuyReceipt {
+    time: usize,
+    amount: f64,
+}
+
+impl BuyReceipt {
+    fn new(time: usize, amount: f64) -> Self {
+        Self {
+            time,
+            amount,
+        }
+    }
+}
+
+struct SellReceipt {
+    time: usize,
+    taxed_amount: f64,
+    untaxed_amount: f64,
+}
+
+impl SellReceipt {
+    fn new(time: usize, taxed_amount: f64, untaxed_amount: f64) -> Self {
+        Self {
+            time,
+            taxed_amount,
+            untaxed_amount,
+        }
+    }
+}
+
+pub enum Transaction {
+    Buy(BuyReceipt),
+    Sell(SellReceipt),
+}
 
 struct Share {
     taxed_amount: f64,
@@ -138,22 +170,23 @@ impl Asset {
         }
     }
 
-    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Transaction> {
+    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Vec<Transaction>> {
         self.shares.iter_mut()
                     .for_each(|share| share.simulate_timestep(&params));
         self.value[time] = self.shares.iter()
                                     .map(|share| share.taxed_amount + share.untaxed_amount)
                                     .sum();
-        //TODO:Implement receipt
-        let mut receipt = None;
+        let mut receipts = Vec::<Transaction>::new();
         if let Some(commands_vec) = commands.get(&time) {
             for command in commands_vec {
                 match command {
                     Command::BuyCC(BuyCommand { time, amount }) => {
                         self.shares.push_back(Share::new(*amount));
+                        receipts.push(Transaction::Buy(BuyReceipt::new(*time, *amount)));
                     },
                     Command::BuyNCC(BuyCommand { time, amount }) => {
                         self.shares.push_back(Share::new(*amount));
+                        receipts.push(Transaction::Buy(BuyReceipt::new(*time, *amount)));
                     },
                     Command::Sell(SellCommand { time, amount }) => {
                         let mut remaining_amount = amount.clone();
@@ -163,13 +196,23 @@ impl Asset {
                             if remaining_amount < taxed_amount {
                                 self.shares[0].taxed_amount -= remaining_amount;
                                 remaining_amount = 0.0;
+                                receipts.push(Transaction::Sell(SellReceipt::new(*time,
+                                                                            remaining_amount,
+                                                                            0.0)));
                             } else if remaining_amount < taxed_amount + untaxed_amount {
                                 self.shares[0].taxed_amount = 0.0;
                                 self.shares[0].untaxed_amount -= remaining_amount -
                                                                     taxed_amount;
+                                receipts.push(Transaction::Sell(SellReceipt::new(*time,
+                                                                            taxed_amount,
+                                                                            remaining_amount -
+                                                                            taxed_amount)));
                                 remaining_amount = 0.0;
                             } else {
                                 self.shares.pop_front();
+                                receipts.push(Transaction::Sell(SellReceipt::new(*time,
+                                                                            taxed_amount,
+                                                                            untaxed_amount)));
                                 remaining_amount -= taxed_amount + untaxed_amount;
                             }
                         }
@@ -177,7 +220,11 @@ impl Asset {
                 }
             }
         }
-        receipt
+        if receipts.len() > 0 {
+            Some(receipts)
+        } else {
+            None
+        }
     }
 
     pub fn write_to_file(&self, filepath: &str) {
