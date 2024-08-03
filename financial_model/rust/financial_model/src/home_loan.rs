@@ -91,8 +91,22 @@ impl Params {
     }
 }
 
-pub struct Transaction {
-    //TODO:Implement Transaction struct
+struct PayReceipt {
+    time: usize,
+    amount: f64,
+}
+
+impl PayReceipt {
+    fn new(time: usize, amount: f64) -> Self {
+        Self {
+            time,
+            amount,
+        }
+    }
+}
+
+pub enum Transaction {
+    Pay(PayReceipt),
 }
 
 pub struct Asset {
@@ -108,14 +122,20 @@ impl Asset {
         }
     }
 
-    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Transaction> {
+    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Vec<Transaction>> {
         let weekly_interest_rate = annual_to_weekly_interest_rate(params.annual_interest_rate);
         //TODO:Fix bug on line below when time = 0
         self.value[time] = self.value[time - 1] * (1.0 + weekly_interest_rate / 100.0);
+        let mut receipts = Vec::<Transaction>::new();
         if let Some(minimum_repayment) = self.minimum_weekly_repayment {
-            self.value[time] -= minimum_repayment;
-            if self.value[time] < 0.0 {
-                self.value[time] = 0.0;
+            if self.value[time] < minimum_repayment {
+                let amount = self.value[time];
+                receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
+                self.value[time] -= amount;
+            } else {
+                let amount = minimum_repayment;
+                receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
+                self.value[time] -= amount;
             }
         }
         if let Some(commands_vec) = commands.get(&time) {
@@ -128,16 +148,23 @@ impl Asset {
                                                             *duration));
                     },
                     Command::Pay(PayCommand { time, amount }) => {
-                        self.value[*time] -= amount;
-                        if self.value[*time] < 0.0 {
+                        if self.value[*time] < *amount {
+                            receipts.push(Transaction::Pay(PayReceipt::new(*time,
+                                                                           self.value[*time])));
                             self.value[*time] = 0.0;
+                        } else {
+                            receipts.push(Transaction::Pay(PayReceipt::new(*time, *amount)));
+                            self.value[*time] -= amount;
                         }
                     },
                 }
             }
         }
-        //TODO:Return a receipt instead of None
-        None
+        if receipts.len() > 0 {
+            Some(receipts)
+        } else {
+            None
+        }
     }
 
     pub fn write_to_file(&self, filepath: &str) {
