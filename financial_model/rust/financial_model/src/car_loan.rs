@@ -70,13 +70,28 @@ impl Params {
     }
 }
 
-pub struct Transaction {
-    //TODO:Implement Transaction struct
+struct PayReceipt {
+    time: usize,
+    amount: f64,
+}
+
+impl PayReceipt {
+    fn new(time: usize, amount: f64) -> Self {
+        Self {
+            time,
+            amount,
+        }
+    }
+}
+
+pub enum Transaction {
+    Pay(PayReceipt),
 }
 
 pub struct Asset {
     value: [f64; NUM_TIMESTEPS],
     balloon_payment_value: [f64; NUM_TIMESTEPS],
+    balloon_payment_time: Option<usize>,
     minimum_weekly_repayment: Option<f64>,
 }
 
@@ -85,22 +100,46 @@ impl Asset {
         Self {
             value: [0.0; NUM_TIMESTEPS],
             balloon_payment_value: [0.0; NUM_TIMESTEPS],
+            balloon_payment_time: None,
             minimum_weekly_repayment: None,
         }
     }
 
-    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Transaction> {
+    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Vec<Transaction>> {
         let weekly_interest_rate = annual_to_weekly_interest_rate(params.annual_interest_rate);
         //TODO:Fix bug on line below when time = 0
         self.value[time] = self.value[time - 1] * (1.0 + weekly_interest_rate / 100.0);
         //TODO:Fix bug on line below when time = 0
         self.balloon_payment_value[time] = self.balloon_payment_value[time - 1] * 
             (1.0 + weekly_interest_rate / 100.0);
+        let mut receipts = Vec::<Transaction>::new();
+        if let Some(balloon_payment_time) = self.balloon_payment_time {
+            if time == balloon_payment_time {
+                if self.value[time] < self.balloon_payment_value[time] {
+                    let amount = self.value[time];
+                    receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
+                    self.value[time] -= amount;
+                    self.balloon_payment_value[time] = 0.0;
+                    self.balloon_payment_time = None;
+                } else {
+                    let amount = self.balloon_payment_value[time];
+                    receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
+                    self.value[time] -= amount;
+                    self.balloon_payment_value[time] = 0.0;
+                    self.balloon_payment_time = None;
+                }
+            }
+        }
         if let Some(minimum_repayment) = self.minimum_weekly_repayment {
-            self.value[time] -= minimum_repayment;
-            if self.value[time] < 0.0 {
-                self.value[time] = 0.0;
-                self.balloon_payment_value[time] = 0.0;
+            if self.value[time] < minimum_repayment {
+                let amount = self.value[time];
+                receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
+                self.value[time] -= amount;
+                self.minimum_weekly_repayment = None;
+            } else {
+                let amount = minimum_repayment;
+                receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
+                self.value[time] -= amount;
                 self.minimum_weekly_repayment = None;
             }
         }
@@ -110,6 +149,7 @@ impl Asset {
                     Command::Start(StartCommand { time, amount, balloon_payment, duration }) => {
                         self.value[*time] = *amount;
                         self.balloon_payment_value[*time] = *balloon_payment;
+                        self.balloon_payment_time = Some(*time + *duration * 52);
                         self.minimum_weekly_repayment = Some(minimum_repayment(*amount,
                                                             params.annual_interest_rate,
                                                             *duration));
@@ -117,8 +157,11 @@ impl Asset {
                 }
             }
         }
-        //TODO:Return a receipt instead of None
-        None
+        if receipts.len() > 0 {
+            Some(receipts)
+        } else {
+            None
+        }
     }
 
     pub fn write_to_file(&self, filepath: &str) {
