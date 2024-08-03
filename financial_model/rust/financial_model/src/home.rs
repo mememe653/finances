@@ -90,8 +90,37 @@ impl Params {
     }
 }
 
-pub struct Transaction {
+struct BuyReceipt {
+    time: usize,
     amount: f64,
+}
+
+impl BuyReceipt {
+    fn new(time: usize, amount: f64) -> Self {
+        Self {
+            time,
+            amount,
+        }
+    }
+}
+
+struct SellReceipt {
+    time: usize,
+    amount: f64,
+}
+
+impl SellReceipt {
+    fn new(time: usize, amount: f64) -> Self {
+        Self {
+            time,
+            amount,
+        }
+    }
+}
+
+pub enum Transaction {
+    Buy(BuyReceipt),
+    Sell(SellReceipt),
 }
 
 impl Asset {
@@ -101,25 +130,31 @@ impl Asset {
         }
     }
 
-    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Transaction> {
+    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Vec<Transaction>> {
         let weekly_ror = annual_to_weekly_ror(params.annual_ror);
         //TODO:Fix bug on line below when time = 0
         self.value[time] = self.value[time - 1] * (1.0 + weekly_ror / 100.0);
-        let mut receipt = None;
+        let mut receipts = Vec::<Transaction>::new();
         if let Some(commands_vec) = commands.get(&time) {
             for command in commands_vec {
                 match command {
-                    Command::Buy(BuyCommand { time, amount }) => self.value[*time] += amount,
+                    Command::Buy(BuyCommand { time, amount }) => {
+                        self.value[*time] += amount;
+                        receipts.push(Transaction::Buy(BuyReceipt::new(*time, *amount)));
+                    },
                     Command::Sell(SellCommand { time }) => {
-                        receipt = Some(Transaction {
-                            amount: self.value[*time],
-                        });
+                        let amount = self.value[*time];
                         self.value[*time] = 0.0;
+                        receipts.push(Transaction::Sell(SellReceipt::new(*time, amount)));
                     },
                 }
             }
         }
-        receipt
+        if receipts.len() > 0 {
+            Some(receipts)
+        } else {
+            None
+        }
     }
 
     pub fn write_to_file(&self, filepath: &str) {
