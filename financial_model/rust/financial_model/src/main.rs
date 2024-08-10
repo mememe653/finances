@@ -1,3 +1,5 @@
+use std::fs;
+
 mod home;
 mod home_loan;
 mod car_loan;
@@ -8,9 +10,9 @@ mod income;
 mod tax;
 mod misc;
 
+const NUM_TIMESTEPS: usize = 35 * 52;
+
 fn main() {
-    const NUM_TIMESTEPS: usize = 35 * 52;
-    
     let income = income::parse_input("input_files/income.txt");
     let expenses = misc::parse_input("input_files/misc.txt");
 
@@ -173,4 +175,17 @@ fn main() {
     hecs_asset.write_to_file("output_files/hecs.txt");
     shares_asset.write_to_file("output_files/shares.txt");
     super_asset.write_to_file("output_files/super.txt");
+
+    for time in 1..NUM_TIMESTEPS {
+        cash[time] += cash[time - 1];
+    }
+    write_cash_to_file(cash, "output_files/cash.txt");
+}
+
+fn write_cash_to_file(cash: [f64; NUM_TIMESTEPS], filepath: &str) {
+    let mut text: String = "".into();
+    for (i, val) in cash.iter().enumerate() {
+        text = format!("{}{} {}\n", text, i, val);
+    }
+    fs::write(filepath, text).expect("Unable to write output file");
 }
