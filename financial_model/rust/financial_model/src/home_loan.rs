@@ -91,9 +91,23 @@ impl Params {
     }
 }
 
-struct PayReceipt {
-    time: usize,
-    amount: f64,
+pub struct StartReceipt {
+    pub time: usize,
+    pub amount: f64,
+}
+
+impl StartReceipt {
+    fn new(time: usize, amount: f64) -> Self {
+        Self {
+            time,
+            amount,
+        }
+    }
+}
+
+pub struct PayReceipt {
+    pub time: usize,
+    pub amount: f64,
 }
 
 impl PayReceipt {
@@ -106,6 +120,7 @@ impl PayReceipt {
 }
 
 pub enum Transaction {
+    Start(StartReceipt),
     Pay(PayReceipt),
 }
 
@@ -146,6 +161,7 @@ impl Asset {
                         self.minimum_weekly_repayment = Some(minimum_repayment(*amount,
                                                             params.annual_interest_rate,
                                                             *duration));
+                        receipts.push(Transaction::Start(StartReceipt::new(*time, *amount)));
                     },
                     Command::Pay(PayCommand { time, amount }) => {
                         if self.value[*time] < *amount {

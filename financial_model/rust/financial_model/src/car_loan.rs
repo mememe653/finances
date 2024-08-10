@@ -70,9 +70,9 @@ impl Params {
     }
 }
 
-struct PayReceipt {
-    time: usize,
-    amount: f64,
+pub struct PayReceipt {
+    pub time: usize,
+    pub amount: f64,
 }
 
 impl PayReceipt {
@@ -140,7 +140,6 @@ impl Asset {
                 let amount = minimum_repayment;
                 receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
                 self.value[time] -= amount;
-                self.minimum_weekly_repayment = None;
             }
         }
         if let Some(commands_vec) = commands.get(&time) {

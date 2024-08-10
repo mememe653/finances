@@ -90,9 +90,9 @@ impl Params {
     }
 }
 
-struct BuyReceipt {
-    time: usize,
-    amount: f64,
+pub struct BuyReceipt {
+    pub time: usize,
+    pub amount: f64,
 }
 
 impl BuyReceipt {
@@ -104,9 +104,9 @@ impl BuyReceipt {
     }
 }
 
-struct SellReceipt {
-    time: usize,
-    amount: f64,
+pub struct SellReceipt {
+    pub time: usize,
+    pub amount: f64,
 }
 
 impl SellReceipt {

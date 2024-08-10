@@ -30,6 +30,7 @@ impl SellCommand {
 }
 
 pub enum Command {
+    BuySG(BuyCommand),
     BuyCC(BuyCommand),
     BuyNCC(BuyCommand),
     Sell(SellCommand),
@@ -42,6 +43,7 @@ impl Command {
         match fields[1] {
             "BUY" => {
                 match fields[2] {
+                    "SG" => Ok(Self::BuySG(BuyCommand::new(fields))),
                     "CC" => Ok(Self::BuyCC(BuyCommand::new(fields))),
                     "NCC" => Ok(Self::BuyNCC(BuyCommand::new(fields))),
                     _ => Err("Failed to parse command"),
@@ -62,6 +64,13 @@ pub fn parse_input(file_path: &str) -> HashMap<usize, Vec<Command>> {
     let mut commands_map: HashMap<usize, Vec<Command>> = HashMap::new();
     for command in commands {
         match command {
+            Command::BuySG(BuyCommand { time, .. }) => {
+                if let Some(commands_vec) = commands_map.get_mut(&time) {
+                    commands_vec.push(command);
+                } else {
+                    commands_map.insert(time, vec![command]);
+                }
+            },
             Command::BuyCC(BuyCommand { time, .. }) => {
                 if let Some(commands_vec) = commands_map.get_mut(&time) {
                     commands_vec.push(command);
@@ -103,24 +112,26 @@ impl Params {
     }
 }
 
-struct BuyReceipt {
-    time: usize,
-    amount: f64,
+pub struct BuyReceipt {
+    pub time: usize,
+    pub amount: f64,
+    pub tax: f64,
 }
 
 impl BuyReceipt {
-    fn new(time: usize, amount: f64) -> Self {
+    fn new(time: usize, amount: f64, tax: f64) -> Self {
         Self {
             time,
             amount,
+            tax,
         }
     }
 }
 
-struct SellReceipt {
-    time: usize,
-    taxed_amount: f64,
-    untaxed_amount: f64,
+pub struct SellReceipt {
+    pub time: usize,
+    pub taxed_amount: f64,
+    pub untaxed_amount: f64,
 }
 
 impl SellReceipt {
@@ -134,7 +145,9 @@ impl SellReceipt {
 }
 
 pub enum Transaction {
-    Buy(BuyReceipt),
+    BuySG(BuyReceipt),
+    BuyCC(BuyReceipt),
+    BuyNCC(BuyReceipt),
     Sell(SellReceipt),
 }
 
@@ -180,13 +193,20 @@ impl Asset {
         if let Some(commands_vec) = commands.get(&time) {
             for command in commands_vec {
                 match command {
+                    Command::BuySG(BuyCommand { time, amount }) => {
+                        let tax = 0.15 * amount;
+                        self.shares.push_back(Share::new(amount - tax));
+                        receipts.push(Transaction::BuySG(BuyReceipt::new(*time, *amount, tax)));
+                    },
                     Command::BuyCC(BuyCommand { time, amount }) => {
-                        self.shares.push_back(Share::new(*amount));
-                        receipts.push(Transaction::Buy(BuyReceipt::new(*time, *amount)));
+                        let tax = 0.15 * amount;
+                        self.shares.push_back(Share::new(amount - tax));
+                        receipts.push(Transaction::BuyCC(BuyReceipt::new(*time, *amount, tax)));
                     },
                     Command::BuyNCC(BuyCommand { time, amount }) => {
+                        let tax = 0.0;
                         self.shares.push_back(Share::new(*amount));
-                        receipts.push(Transaction::Buy(BuyReceipt::new(*time, *amount)));
+                        receipts.push(Transaction::BuyNCC(BuyReceipt::new(*time, *amount, tax)));
                     },
                     Command::Sell(SellCommand { time, amount }) => {
                         let mut remaining_amount = amount.clone();
@@ -195,10 +215,10 @@ impl Asset {
                             let untaxed_amount = self.shares[0].untaxed_amount;
                             if remaining_amount < taxed_amount {
                                 self.shares[0].taxed_amount -= remaining_amount;
-                                remaining_amount = 0.0;
                                 receipts.push(Transaction::Sell(SellReceipt::new(*time,
                                                                             remaining_amount,
                                                                             0.0)));
+                                remaining_amount = 0.0;
                             } else if remaining_amount < taxed_amount + untaxed_amount {
                                 self.shares[0].taxed_amount = 0.0;
                                 self.shares[0].untaxed_amount -= remaining_amount -
