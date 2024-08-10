@@ -153,16 +153,16 @@ class Superannuation:
         self.in_file = open("input_files/super.txt", "w")
         self.num_weeks = num_weeks
         self.inflation_rate = annual_inflation_rate
-        self.buy_sg_list = {}
+        self.sg_rate = 11
         self.buy_cc_list = {}
         self.buy_ncc_list = {}
         self.sell_list = {}
 
-    def write(self):
+    def write(self, income_file_gen):
         for week in range(self.num_weeks):
-            if week in self.buy_sg_list:
-                for transaction in self.buy_sg_list[week]:
-                    self.in_file.write(f"{week} BUY SG {transaction['amount']}\n")
+            if week in income_file_gen.income_list:
+                for transaction in income_file_gen.income_list[week]:
+                    self.in_file.write(f"{week} BUY SG {self.sg_rate / 100 * transaction['amount']}\n")
             if week in self.buy_cc_list:
                 for transaction in self.buy_cc_list[week]:
                     self.in_file.write(f"{week} BUY CC {transaction['amount']}\n")
@@ -175,13 +175,6 @@ class Superannuation:
         self.in_file.close()
 
     def buy(self, amount, variant, time):
-        if variant == "SG":
-            #TODO:Handle inflation in SG variant
-            if time not in self.buy_sg_list:
-                self.buy_sg_list[time] = []
-            self.buy_sg_list[time].append({
-                "amount": amount,
-            })
         if variant == "CC":
             if time not in self.buy_cc_list:
                 self.buy_cc_list[time] = []
@@ -290,5 +283,5 @@ if __name__ == "__main__":
     home_loan_file_gen.write()
     car_loan_file_gen.write()
     shares_file_gen.write()
-    superannuation_file_gen.write()
+    superannuation_file_gen.write(income_file_gen)
     hecs_file_gen.write()
