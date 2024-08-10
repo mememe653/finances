@@ -115,19 +115,10 @@ impl Asset {
         let mut receipts = Vec::<Transaction>::new();
         if let Some(balloon_payment_time) = self.balloon_payment_time {
             if time == balloon_payment_time {
-                if self.value[time] < self.balloon_payment_value[time] {
-                    let amount = self.value[time];
-                    receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
-                    self.value[time] -= amount;
-                    self.balloon_payment_value[time] = 0.0;
-                    self.balloon_payment_time = None;
-                } else {
-                    let amount = self.balloon_payment_value[time];
-                    receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
-                    self.value[time] -= amount;
-                    self.balloon_payment_value[time] = 0.0;
-                    self.balloon_payment_time = None;
-                }
+                let amount = self.balloon_payment_value[time];
+                receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
+                self.balloon_payment_value[time] = 0.0;
+                self.balloon_payment_time = None;
             }
         }
         if let Some(minimum_repayment) = self.minimum_weekly_repayment {
