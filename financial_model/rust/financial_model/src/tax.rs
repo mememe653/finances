@@ -79,12 +79,14 @@ impl TaxBracket {
     }
 }
 
-pub fn reconcile_tax(taxable_income: [f64; 52], taxed_income: [f64; 52]) -> f64 {
+pub fn reconcile_tax(taxable_income: [f64; 52], original_income: [f64; 52]) -> f64 {
     //TODO:Have single source of truth for tax rates
     let tax_rates = [0.0, 16.0, 30.0, 37.0, 45.0];
     let year_taxable_income = taxable_income.into_iter().sum();
     let tax = TaxBrackets::compute_tax(year_taxable_income, tax_rates);
-    year_taxable_income - tax - taxed_income.into_iter().sum::<f64>()
+    let year_original_income = original_income.into_iter().sum();
+    let tax_withheld = TaxBrackets::compute_tax(year_original_income, tax_rates);
+    tax - tax_withheld
 }
 
 pub fn tax_income(taxable_income: [f64; NUM_TIMESTEPS]) -> [f64; NUM_TIMESTEPS] {
