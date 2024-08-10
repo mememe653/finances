@@ -108,8 +108,9 @@ impl Asset {
         } else {
             self.minimum_weekly_repayment = Some(minimum_repayment(year_repayment_income));
         }
-        //TODO:Fix bug on line below when time = 0
-        self.value[time] = self.value[time - 1] * (1.0 + weekly_interest_rate / 100.0);
+        if time > 0 {
+            self.value[time] = self.value[time - 1] * (1.0 + weekly_interest_rate / 100.0);
+        }
         let mut receipts = Vec::<Transaction>::new();
         if let Some(repayment) = self.minimum_weekly_repayment {
             if self.value[time] < repayment {

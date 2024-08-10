@@ -42,8 +42,7 @@ fn main() {
     let super_commands = superannuation::parse_input("input_files/super.txt");
     let mut super_asset = superannuation::Asset::new();
 
-    //TODO:Fix bug so that you can start at time 0
-    for sim_time in 1..NUM_TIMESTEPS {
+    for sim_time in 0..NUM_TIMESTEPS {
         let home_params = home::Params::new(8.0);
         let receipts = home_asset.simulate_timestep(sim_time, home_params, &home_commands);
         if let Some(receipts_vec) = receipts {
@@ -175,62 +174,3 @@ fn main() {
     shares_asset.write_to_file("output_files/shares.txt");
     super_asset.write_to_file("output_files/super.txt");
 }
-
-
-
-
-
-
-    //let commands = home::parse_input("input_files/home.txt");
-    //let mut asset = home::Asset::new();
-    //let num_timesteps = 35 * 52;
-    //for time in 1..num_timesteps {
-        //let params = home::Params::new(8.0);
-        //asset.simulate_timestep(time, params, &commands);
-    //}
-    //asset.write_to_file("output_files/home.txt");
-
-    //let commands = home_loan::parse_input("input_files/home_loan.txt");
-    //let mut asset = home_loan::Asset::new();
-    //let num_timesteps = 35 * 52;
-    //for time in 1..num_timesteps {
-        //let params = home_loan::Params::new(4.0);
-        //asset.simulate_timestep(time, params, &commands);
-    //}
-    //asset.write_to_file("output_files/home_loan.txt");
-
-    //let commands = car_loan::parse_input("input_files/car_loan.txt");
-    //let mut asset = car_loan::Asset::new();
-    //let num_timesteps = 35 * 52;
-    //for time in 1..num_timesteps {
-        //let params = car_loan::Params::new(8.0);
-        //asset.simulate_timestep(time, params, &commands);
-    //}
-    //asset.write_to_file("output_files/car_loan.txt");
-
-    //let commands = hecs::parse_input("input_files/hecs.txt");
-    //let mut asset = hecs::Asset::new();
-    //let num_timesteps = 35 * 52;
-    //for time in 1..num_timesteps {
-        //let params = hecs::Params::new(4.0);
-        //asset.simulate_timestep(time, params, &commands, repayment_income);
-    //}
-    //asset.write_to_file("output_files/hecs.txt");
-
-    //let commands = shares::parse_input("input_files/shares.txt");
-    //let mut asset = shares::Asset::new();
-    //let num_timesteps = 35 * 52;
-    //for time in 1..num_timesteps {
-        //let params = shares::Params::new(10.0);
-        //asset.simulate_timestep(time, params, &commands);
-    //}
-    //asset.write_to_file("output_files/shares.txt");
-
-    //let commands = superannuation::parse_input("input_files/super.txt");
-    //let mut asset = superannuation::Asset::new();
-    //let num_timesteps = 35 * 52;
-    //for time in 1..num_timesteps {
-        //let params = superannuation::Params::new(10.0);
-        //asset.simulate_timestep(time, params, &commands);
-    //}
-    //asset.write_to_file("output_files/super.txt");

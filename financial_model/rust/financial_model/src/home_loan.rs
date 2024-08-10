@@ -139,8 +139,9 @@ impl Asset {
 
     pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Vec<Transaction>> {
         let weekly_interest_rate = annual_to_weekly_interest_rate(params.annual_interest_rate);
-        //TODO:Fix bug on line below when time = 0
-        self.value[time] = self.value[time - 1] * (1.0 + weekly_interest_rate / 100.0);
+        if time > 0 {
+            self.value[time] = self.value[time - 1] * (1.0 + weekly_interest_rate / 100.0);
+        }
         let mut receipts = Vec::<Transaction>::new();
         if let Some(minimum_repayment) = self.minimum_weekly_repayment {
             if self.value[time] < minimum_repayment {

@@ -132,8 +132,9 @@ impl Asset {
 
     pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Vec<Transaction>> {
         let weekly_ror = annual_to_weekly_ror(params.annual_ror);
-        //TODO:Fix bug on line below when time = 0
-        self.value[time] = self.value[time - 1] * (1.0 + weekly_ror / 100.0);
+        if time > 0 {
+            self.value[time] = self.value[time - 1] * (1.0 + weekly_ror / 100.0);
+        }
         let mut receipts = Vec::<Transaction>::new();
         if let Some(commands_vec) = commands.get(&time) {
             for command in commands_vec {
