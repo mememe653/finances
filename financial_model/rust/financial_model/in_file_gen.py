@@ -122,6 +122,7 @@ class Shares:
         self.inflation_rate = annual_inflation_rate
         self.buy_list = {}
         self.sell_list = {}
+        self.sell_all_list = {}
 
     def write(self):
         for week in range(self.num_weeks):
@@ -131,6 +132,8 @@ class Shares:
             if week in self.sell_list:
                 for transaction in self.sell_list[week]:
                     self.in_file.write(f"{week} SELL {transaction['amount']}\n")
+            if week in self.sell_all_list:
+                self.in_file.write(f"{week} SELL ALL\n")
         self.in_file.close()
 
     def buy(self, amount, time):
@@ -146,6 +149,11 @@ class Shares:
         self.sell_list[time].append({
             "amount": apply_inflation(amount, time, self.inflation_rate),
         })
+
+    def sell_all(self, time):
+        if time not in self.sell_all_list:
+            self.sell_all_list[time] = []
+        self.sell_all_list[time] = time
 
 
 class Superannuation:
@@ -258,6 +266,7 @@ if __name__ == "__main__":
 
     misc_file_gen.add(-135000, 0)
     shares_file_gen.buy(135000, 0)
+    shares_file_gen.sell_all(53)
 
 
 

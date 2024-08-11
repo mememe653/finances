@@ -29,9 +29,22 @@ impl SellCommand {
     }
 }
 
+struct SellAllCommand {
+    time: usize,
+}
+
+impl SellAllCommand {
+    fn new(fields: Vec<&str>) -> Self {
+        Self {
+            time: fields[0].parse::<usize>().unwrap(),
+        }
+    }
+}
+
 pub enum Command {
     Buy(BuyCommand),
     Sell(SellCommand),
+    SellAll(SellAllCommand),
 }
 
 impl Command {
@@ -40,7 +53,12 @@ impl Command {
                                             .collect();
         match fields[1] {
             "BUY" => Ok(Self::Buy(BuyCommand::new(fields))),
-            "SELL" => Ok(Self::Sell(SellCommand::new(fields))),
+            "SELL" => {
+                match fields[2] {
+                    "ALL" => Ok(Self::SellAll(SellAllCommand::new(fields))),
+                    _ => Ok(Self::Sell(SellCommand::new(fields))),
+                }
+            },
             _ => Err("Failed to parse command"),
         }
     }
@@ -69,6 +87,13 @@ pub fn parse_input(file_path: &str) -> HashMap<usize, Vec<Command>> {
                     commands_map.insert(time, vec![command]);
                 }
             },
+            Command::SellAll(SellAllCommand { time }) => {
+                if let Some(commands_vec) = commands_map.get_mut(&time) {
+                    commands_vec.push(command);
+                } else {
+                    commands_map.insert(time, vec![command]);
+                }
+            }
         }
     }
     commands_map
@@ -213,6 +238,18 @@ impl Asset {
                                                                                  cg_amount,
                                                                                  weeks_held)));
                             }
+                        }
+                    },
+                    Command::SellAll(SellAllCommand { time }) => {
+                        while self.shares.len() > 0 {
+                            let sold_share = self.shares.pop_front().unwrap();
+                            let paid_amount = sold_share.initial_value;
+                            let cg_amount = sold_share.capital_gains;
+                            let weeks_held = sold_share.weeks_held;
+                            receipts.push(Transaction::Sell(SellReceipt::new(*time,
+                                                                             paid_amount,
+                                                                             cg_amount,
+                                                                             weeks_held)));
                         }
                     },
                 }
