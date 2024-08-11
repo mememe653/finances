@@ -1,5 +1,5 @@
-//TODO:Have single source of truth for NUM_TIMESTEPS
-const NUM_TIMESTEPS: usize = 35 * 52;
+use super::NUM_TIMESTEPS as NUM_TIMESTEPS;
+//TODO:Adjust tax brackets with inflation
 
 struct TaxBrackets {
     bracket_1: TaxBracket,

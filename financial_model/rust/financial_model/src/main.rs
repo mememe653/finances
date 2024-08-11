@@ -1,4 +1,5 @@
 use std::fs;
+use std::collections::HashMap;
 
 mod home;
 mod home_loan;
@@ -13,6 +14,8 @@ mod misc;
 const NUM_TIMESTEPS: usize = 35 * 52;
 
 fn main() {
+    let params = parse_params_file("input_files/params.txt");
+
     let income = income::parse_input("input_files/income.txt");
     let expenses = misc::parse_input("input_files/misc.txt");
 
@@ -45,7 +48,7 @@ fn main() {
     let mut super_asset = superannuation::Asset::new();
 
     for sim_time in 0..NUM_TIMESTEPS {
-        let home_params = home::Params::new(8.0);
+        let home_params = home::Params::new(params["home_appreciation_rate"]);
         let receipts = home_asset.simulate_timestep(sim_time, home_params, &home_commands);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
@@ -60,7 +63,7 @@ fn main() {
             }
         }
 
-        let home_loan_params = home_loan::Params::new(4.0);
+        let home_loan_params = home_loan::Params::new(params["home_loan_interest_rate"]);
         let receipts = home_loan_asset.simulate_timestep(sim_time, home_loan_params, &home_loan_commands);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
@@ -75,7 +78,7 @@ fn main() {
             }
         }
 
-        let car_loan_params = car_loan::Params::new(8.0);
+        let car_loan_params = car_loan::Params::new(params["car_loan_interest_rate"]);
         let receipts = car_loan_asset.simulate_timestep(sim_time, car_loan_params, &car_loan_commands);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
@@ -87,7 +90,7 @@ fn main() {
             }
         }
 
-        let hecs_params = hecs::Params::new(4.0);
+        let hecs_params = hecs::Params::new(params["hecs_indexation_rate"]);
         let receipts = hecs_asset.simulate_timestep(sim_time, hecs_params, &hecs_commands, &income);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
@@ -99,7 +102,7 @@ fn main() {
             }
         }
 
-        let shares_params = shares::Params::new(10.0);
+        let shares_params = shares::Params::new(params["shares_ror"]);
         let receipts = shares_asset.simulate_timestep(sim_time, shares_params, &shares_commands);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
@@ -119,7 +122,7 @@ fn main() {
             }
         }
 
-        let super_params = superannuation::Params::new(10.0);
+        let super_params = superannuation::Params::new(params["super_ror"]);
         let receipts = super_asset.simulate_timestep(sim_time, super_params, &super_commands);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
@@ -158,9 +161,9 @@ fn main() {
         if sim_time % 52 == 0 && sim_time != 0 {
             let year_taxable_income: [f64; 52] = taxable_income[(sim_time - 52) .. sim_time]
                                                     .try_into().unwrap();
-            let year_taxed_income: [f64; 52] = taxed_income[(sim_time - 52) .. sim_time]
+            let original_income: [f64; 52] = income[(sim_time - 52) .. sim_time]
                                                     .try_into().unwrap();
-            cash[sim_time] -= tax::reconcile_tax(year_taxable_income, year_taxed_income);
+            cash[sim_time] -= tax::reconcile_tax(year_taxable_income, original_income);
             let year_fhss_taxed: [f64; 52] = fhss_taxed[(sim_time - 52) .. sim_time]
                                                     .try_into().unwrap();
             let year_fhss_untaxed: [f64; 52] = fhss_untaxed[(sim_time - 52) .. sim_time]
@@ -188,4 +191,18 @@ fn write_cash_to_file(cash: [f64; NUM_TIMESTEPS], filepath: &str) {
         text = format!("{}{} {}\n", text, i, val);
     }
     fs::write(filepath, text).expect("Unable to write output file");
+}
+
+fn parse_params_file(file_path: &str) -> HashMap<String, f64> {
+    let input_lines = fs::read_to_string(file_path)
+        .expect("Invalid file path");
+    let mut params: HashMap<String, f64> = HashMap::new();
+    for line in input_lines.lines() {
+        let fields: Vec<&str> = line.split_whitespace()
+                                    .collect();
+        let key = fields[0];
+        let val = fields[1].parse::<f64>().unwrap();
+        params.insert(key.to_string(), val);
+    }
+    params
 }

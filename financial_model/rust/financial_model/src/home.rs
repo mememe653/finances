@@ -1,6 +1,8 @@
 use std::fs;
 use std::collections::HashMap;
 
+use super::NUM_TIMESTEPS as NUM_TIMESTEPS;
+
 struct BuyCommand {
     time: usize,
     amount: f64,
@@ -71,8 +73,6 @@ pub fn parse_input(file_path: &str) -> HashMap<usize, Vec<Command>> {
     }
     commands_map
 }
-
-const NUM_TIMESTEPS: usize = 35 * 52;
 
 pub struct Asset {
     value: [f64; NUM_TIMESTEPS],

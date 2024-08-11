@@ -1,6 +1,8 @@
 use std::fs;
 use std::collections::HashMap;
 
+use super::NUM_TIMESTEPS as NUM_TIMESTEPS;
+
 struct PayCommand {
     time: usize,
     amount: f64,
@@ -50,9 +52,6 @@ pub fn parse_input(file_path: &str) -> HashMap<usize, Vec<Command>> {
     }
     commands_map
 }
-
-//TODO:Have single source of truth for number of timesteps
-const NUM_TIMESTEPS: usize = 35 * 52;
 
 pub struct Params {
     annual_indexation_rate: f64,

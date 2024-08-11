@@ -5,6 +5,27 @@ def apply_inflation(amount, time, annual_inflation_rate):
     return amount * (1 + weekly_inflation_rate / 100) ** time
 
 
+def write_params_file(params):
+    in_file = open("input_files/params.txt", "w")
+    in_file.write(f"INFLATION_RATE {params['inflation_rate']}\n")
+    in_file.write(f"HOME_APPRECIATION_RATE {params['home_appreciation_rate']}\n")
+    in_file.write(f"HOME_LOAN_INTEREST_RATE {params['home_loan_interest_rate']}\n")
+    in_file.write(f"CAR_LOAN_INTEREST_RATE {params['car_loan_interest_rate']}\n")
+    in_file.write(f"HECS_INDEXATION_RATE {params['hecs_indexation_rate']}\n")
+    in_file.write(f"SHARES_ROR {params['shares_ror']}\n")
+    in_file.write(f"SUPER_ROR {params['super_ror']}\n")
+    in_file.close()
+
+
+def write_tax_brackets_file(initial_tax_brackets, num_weeks, annual_inflation_rate):
+    in_file = open("input_files/tax_brackets.txt", "w")
+    for week in range(num_weeks):
+        for bracket in initial_tax_brackets:
+            in_file.write(f"{apply_inflation(bracket, week, annual_inflation_rate)} ")
+        in_file.write("\n")
+    in_file.close()
+
+
 class Home:
     def __init__(self, num_weeks, annual_inflation_rate):
         self.in_file = open("input_files/home.txt", "w")
@@ -249,17 +270,27 @@ class Misc:
 
 
 if __name__ == "__main__":
-    num_weeks = 35 * 52
-    inflation_rate = 4
+    params = {}
+    params["inflation_rate"] = 4
+    params["home_appreciation_rate"] = 8
+    params["home_loan_interest_rate"] = 6
+    params["car_loan_interest_rate"] = 8
+    params["hecs_indexation_rate"] = 4
+    params["shares_ror"] = 10
+    params["super_ror"] = 10
 
-    income_file_gen = Income(num_weeks, inflation_rate)
-    misc_file_gen = Misc(num_weeks, inflation_rate)
-    home_file_gen = Home(num_weeks, inflation_rate)
-    home_loan_file_gen = HomeLoan(num_weeks, inflation_rate)
-    car_loan_file_gen = CarLoan(num_weeks, inflation_rate)
-    shares_file_gen = Shares(num_weeks, inflation_rate)
-    superannuation_file_gen = Superannuation(num_weeks, inflation_rate)
-    hecs_file_gen = Hecs(num_weeks, inflation_rate)
+    write_params_file(params)
+
+    num_weeks = 35 * 52
+
+    income_file_gen = Income(num_weeks, params["inflation_rate"])
+    misc_file_gen = Misc(num_weeks, params["inflation_rate"])
+    home_file_gen = Home(num_weeks, params["inflation_rate"])
+    home_loan_file_gen = HomeLoan(num_weeks, params["inflation_rate"])
+    car_loan_file_gen = CarLoan(num_weeks, params["inflation_rate"])
+    shares_file_gen = Shares(num_weeks, params["inflation_rate"])
+    superannuation_file_gen = Superannuation(num_weeks, params["inflation_rate"])
+    hecs_file_gen = Hecs(num_weeks, params["inflation_rate"])
 
     for week in range(num_weeks):
         income_file_gen.add(1442, week)
