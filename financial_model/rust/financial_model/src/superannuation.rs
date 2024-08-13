@@ -17,6 +17,18 @@ impl BuyCommand {
     }
 }
 
+struct BuyAllCommand {
+    time: usize,
+}
+
+impl BuyAllCommand {
+    fn new(fields: Vec<&str>) -> Self {
+        Self {
+            time: fields[0].parse::<usize>().unwrap(),
+        }
+    }
+}
+
 struct SellCommand {
     time: usize,
     amount: f64,
@@ -34,7 +46,9 @@ impl SellCommand {
 pub enum Command {
     BuySG(BuyCommand),
     BuyCC(BuyCommand),
+    BuyAllCC(BuyAllCommand),
     BuyNCC(BuyCommand),
+    BuyAllNCC(BuyAllCommand),
     Sell(SellCommand),
 }
 
@@ -46,8 +60,18 @@ impl Command {
             "BUY" => {
                 match fields[2] {
                     "SG" => Ok(Self::BuySG(BuyCommand::new(fields))),
-                    "CC" => Ok(Self::BuyCC(BuyCommand::new(fields))),
-                    "NCC" => Ok(Self::BuyNCC(BuyCommand::new(fields))),
+                    "CC" => {
+                        match fields[3] {
+                            "ALL" => Ok(Self::BuyAllCC(BuyAllCommand::new(fields))),
+                            _ => Ok(Self::BuyCC(BuyCommand::new(fields))),
+                        }
+                    },
+                    "NCC" => {
+                        match fields[3] {
+                            "ALL" => Ok(Self::BuyAllNCC(BuyAllCommand::new(fields))),
+                            _ => Ok(Self::BuyNCC(BuyCommand::new(fields))),
+                        }
+                    },
                     _ => Err("Failed to parse command"),
                 }
             },
@@ -80,7 +104,21 @@ pub fn parse_input(file_path: &str) -> HashMap<usize, Vec<Command>> {
                     commands_map.insert(time, vec![command]);
                 }
             },
+            Command::BuyAllCC(BuyAllCommand { time }) => {
+                if let Some(commands_vec) = commands_map.get_mut(&time) {
+                    commands_vec.push(command);
+                } else {
+                    commands_map.insert(time, vec![command]);
+                }
+            },
             Command::BuyNCC(BuyCommand { time, .. }) => {
+                if let Some(commands_vec) = commands_map.get_mut(&time) {
+                    commands_vec.push(command);
+                } else {
+                    commands_map.insert(time, vec![command]);
+                }
+            },
+            Command::BuyAllNCC(BuyAllCommand { time }) => {
                 if let Some(commands_vec) = commands_map.get_mut(&time) {
                     commands_vec.push(command);
                 } else {
@@ -182,7 +220,7 @@ impl Asset {
         }
     }
 
-    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Vec<Transaction>> {
+    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>, cash: &[f64; NUM_TIMESTEPS]) -> Option<Vec<Transaction>> {
         self.shares.iter_mut()
                     .for_each(|share| share.simulate_timestep(&params));
         self.value[time] = self.shares.iter()
@@ -202,10 +240,22 @@ impl Asset {
                         self.shares.push_back(Share::new(amount - tax));
                         receipts.push(Transaction::BuyCC(BuyReceipt::new(*time, *amount, tax)));
                     },
+                    Command::BuyAllCC(BuyAllCommand { time }) => {
+                        let amount = cash[*time];
+                        let tax = 0.15 * amount;
+                        self.shares.push_back(Share::new(amount - tax));
+                        receipts.push(Transaction::BuyCC(BuyReceipt::new(*time, amount, tax)));
+                    },
                     Command::BuyNCC(BuyCommand { time, amount }) => {
                         let tax = 0.0;
                         self.shares.push_back(Share::new(*amount));
                         receipts.push(Transaction::BuyNCC(BuyReceipt::new(*time, *amount, tax)));
+                    },
+                    Command::BuyAllNCC(BuyAllCommand { time }) => {
+                        let amount = cash[*time];
+                        let tax = 0.0;
+                        self.shares.push_back(Share::new(amount));
+                        receipts.push(Transaction::BuyNCC(BuyReceipt::new(*time, amount, tax)));
                     },
                     Command::Sell(SellCommand { time, amount }) => {
                         let mut remaining_amount = amount.clone();

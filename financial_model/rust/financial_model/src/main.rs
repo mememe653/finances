@@ -15,16 +15,17 @@ const NUM_TIMESTEPS: usize = 35 * 52;
 
 fn main() {
     let params = parse_params_file("input_files/params.txt");
+    let tax_brackets = parse_tax_brackets_file("input_files/tax_brackets.txt");
 
     let income = income::parse_input("input_files/income.txt");
     let expenses = misc::parse_input("input_files/misc.txt");
 
     let mut taxable_income = income;
-    let taxed_income = tax::tax_income(income);
+    let taxed_income = tax::tax_income(income, tax_brackets);
     let mut fhss_taxed = [0.0; NUM_TIMESTEPS];
     let mut fhss_untaxed = [0.0; NUM_TIMESTEPS];
 
-    let mut cash = tax::tax_income(income);
+    let mut cash = tax::tax_income(income, tax_brackets);
     for (i, expense) in expenses.iter().enumerate() {
         cash[i] -= expense;
     }
@@ -48,6 +49,25 @@ fn main() {
     let mut super_asset = superannuation::Asset::new();
 
     for sim_time in 0..NUM_TIMESTEPS {
+        if sim_time % 52 == 0 && sim_time != 0 {
+            let year_taxable_income: [f64; 52] = taxable_income[(sim_time - 52) .. sim_time]
+                                                    .try_into().unwrap();
+            let original_income: [f64; 52] = income[(sim_time - 52) .. sim_time]
+                                                    .try_into().unwrap();
+            cash[sim_time] -= tax::reconcile_tax(year_taxable_income,
+                                                 original_income,
+                                                 tax_brackets[sim_time]);
+            let year_fhss_taxed: [f64; 52] = fhss_taxed[(sim_time - 52) .. sim_time]
+                                                    .try_into().unwrap();
+            let year_fhss_untaxed: [f64; 52] = fhss_untaxed[(sim_time - 52) .. sim_time]
+                                                    .try_into().unwrap();
+            cash[sim_time] -= tax::tax_super_fhss(year_taxable_income, year_fhss_taxed, year_fhss_untaxed, tax_brackets[sim_time]);
+        }
+
+        if sim_time != 0 {
+            cash[sim_time] += cash[sim_time - 1];
+        }
+
         let home_params = home::Params::new(params["home_appreciation_rate"]);
         let receipts = home_asset.simulate_timestep(sim_time, home_params, &home_commands);
         if let Some(receipts_vec) = receipts {
@@ -103,7 +123,7 @@ fn main() {
         }
 
         let shares_params = shares::Params::new(params["shares_ror"]);
-        let receipts = shares_asset.simulate_timestep(sim_time, shares_params, &shares_commands);
+        let receipts = shares_asset.simulate_timestep(sim_time, shares_params, &shares_commands, &cash);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
                 match receipt {
@@ -123,7 +143,7 @@ fn main() {
         }
 
         let super_params = superannuation::Params::new(params["super_ror"]);
-        let receipts = super_asset.simulate_timestep(sim_time, super_params, &super_commands);
+        let receipts = super_asset.simulate_timestep(sim_time, super_params, &super_commands, &cash);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
                 match receipt {
@@ -157,19 +177,6 @@ fn main() {
                 }
             }
         }
-
-        if sim_time % 52 == 0 && sim_time != 0 {
-            let year_taxable_income: [f64; 52] = taxable_income[(sim_time - 52) .. sim_time]
-                                                    .try_into().unwrap();
-            let original_income: [f64; 52] = income[(sim_time - 52) .. sim_time]
-                                                    .try_into().unwrap();
-            cash[sim_time] -= tax::reconcile_tax(year_taxable_income, original_income);
-            let year_fhss_taxed: [f64; 52] = fhss_taxed[(sim_time - 52) .. sim_time]
-                                                    .try_into().unwrap();
-            let year_fhss_untaxed: [f64; 52] = fhss_untaxed[(sim_time - 52) .. sim_time]
-                                                    .try_into().unwrap();
-            cash[sim_time] -= tax::tax_super_fhss(year_taxable_income, year_fhss_taxed, year_fhss_untaxed);
-        }
     }
 
     home_asset.write_to_file("output_files/home.txt");
@@ -179,9 +186,6 @@ fn main() {
     shares_asset.write_to_file("output_files/shares.txt");
     super_asset.write_to_file("output_files/super.txt");
 
-    for time in 1..NUM_TIMESTEPS {
-        cash[time] += cash[time - 1];
-    }
     write_cash_to_file(cash, "output_files/cash.txt");
 }
 
@@ -205,4 +209,23 @@ fn parse_params_file(file_path: &str) -> HashMap<String, f64> {
         params.insert(key.to_string(), val);
     }
     params
+}
+
+fn parse_tax_brackets_file(file_path: &str) -> [[f64; 5]; NUM_TIMESTEPS] {
+    let input_lines = fs::read_to_string(file_path)
+        .expect("Invalid file path");
+    let mut tax_brackets_list = [[0.0; 5]; NUM_TIMESTEPS];
+    for (time, line) in input_lines.lines().enumerate() {
+        let tax_brackets: Vec<&str> = line.split_whitespace()
+                                            .collect();
+        //tax_brackets_list[time] = line.iter()
+                                        //.map(|bracket| bracket.parse::<f64>().unwrap())
+                                        //.collect();
+        tax_brackets_list[time] = [tax_brackets[0].parse::<f64>().unwrap(),
+                                    tax_brackets[1].parse::<f64>().unwrap(),
+                                    tax_brackets[2].parse::<f64>().unwrap(),
+                                    tax_brackets[3].parse::<f64>().unwrap(),
+                                    tax_brackets[4].parse::<f64>().unwrap()]
+    }
+    tax_brackets_list
 }

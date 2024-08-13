@@ -17,6 +17,18 @@ impl BuyCommand {
     }
 }
 
+struct BuyAllCommand {
+    time: usize,
+}
+
+impl BuyAllCommand {
+    fn new(fields: Vec<&str>) -> Self {
+        Self {
+            time: fields[0].parse::<usize>().unwrap(),
+        }
+    }
+}
+
 struct SellCommand {
     time: usize,
     amount: f64,
@@ -45,6 +57,7 @@ impl SellAllCommand {
 
 pub enum Command {
     Buy(BuyCommand),
+    BuyAll(BuyAllCommand),
     Sell(SellCommand),
     SellAll(SellAllCommand),
 }
@@ -54,7 +67,12 @@ impl Command {
         let fields: Vec<&str> = input_line.split_whitespace()
                                             .collect();
         match fields[1] {
-            "BUY" => Ok(Self::Buy(BuyCommand::new(fields))),
+            "BUY" => {
+                match fields[2] {
+                    "ALL" => Ok(Self::BuyAll(BuyAllCommand::new(fields))),
+                    _ => Ok(Self::Buy(BuyCommand::new(fields))),
+                }
+            }
             "SELL" => {
                 match fields[2] {
                     "ALL" => Ok(Self::SellAll(SellAllCommand::new(fields))),
@@ -76,6 +94,13 @@ pub fn parse_input(file_path: &str) -> HashMap<usize, Vec<Command>> {
     for command in commands {
         match command {
             Command::Buy(BuyCommand { time, .. }) => {
+                if let Some(commands_vec) = commands_map.get_mut(&time) {
+                    commands_vec.push(command);
+                } else {
+                    commands_map.insert(time, vec![command]);
+                }
+            },
+            Command::BuyAll(BuyAllCommand { time }) => {
                 if let Some(commands_vec) = commands_map.get_mut(&time) {
                     commands_vec.push(command);
                 } else {
@@ -191,7 +216,7 @@ impl Asset {
         }
     }
 
-    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Vec<Transaction>> {
+    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>, cash: &[f64; NUM_TIMESTEPS]) -> Option<Vec<Transaction>> {
         self.shares.iter_mut()
                     .for_each(|share| share.simulate_timestep(&params));
         self.value[time] = self.shares.iter()
@@ -204,6 +229,11 @@ impl Asset {
                     Command::Buy(BuyCommand { time, amount }) => {
                         self.shares.push_back(Share::new(*amount));
                         receipts.push(Transaction::Buy(BuyReceipt::new(*time, *amount)));
+                    },
+                    Command::BuyAll(BuyAllCommand { time }) => {
+                        let amount = cash[*time];
+                        self.shares.push_back(Share::new(amount));
+                        receipts.push(Transaction::Buy(BuyReceipt::new(*time, amount)));
                     },
                     Command::Sell(SellCommand { time, amount }) => {
                         let mut remaining_amount = amount.clone();
