@@ -11,7 +11,7 @@ struct TaxBrackets {
 }
 
 impl TaxBrackets {
-    fn new(taxable_income: f64, tax_rates: [f64; 5], tax_brackets: [f64; 5]) -> Self {
+    fn new(taxable_income: f64, tax_rates: [f64; 5], tax_brackets: [f64; 4]) -> Self {
         let bracket_1 = TaxBracket::new(taxable_income, 0.0, tax_brackets[0], tax_rates[0]);
         let bracket_2 = TaxBracket::new(taxable_income, tax_brackets[0], tax_brackets[1],
                                         tax_rates[1]);
@@ -31,7 +31,7 @@ impl TaxBrackets {
         }
     }
 
-    pub fn compute_tax(taxable_income: f64, tax_rates: [f64; 5], tax_brackets: [f64; 5]) -> f64 {
+    pub fn compute_tax(taxable_income: f64, tax_rates: [f64; 5], tax_brackets: [f64; 4]) -> f64 {
         let tax_brackets = Self::new(taxable_income, tax_rates, tax_brackets);
         let mut tax = 0.0;
         tax += tax_brackets.bracket_1.amount * tax_brackets.bracket_1.tax_rate / 100.0;
@@ -77,7 +77,7 @@ impl TaxBracket {
     }
 }
 
-pub fn reconcile_tax(taxable_income: [f64; 52], original_income: [f64; 52], tax_brackets: [f64; 5]) -> f64 {
+pub fn reconcile_tax(taxable_income: [f64; 52], original_income: [f64; 52], tax_brackets: [f64; 4]) -> f64 {
     let year_taxable_income = taxable_income.into_iter().sum();
     let tax = TaxBrackets::compute_tax(year_taxable_income, TAX_RATES, tax_brackets);
     let year_original_income = original_income.into_iter().sum();
@@ -85,13 +85,14 @@ pub fn reconcile_tax(taxable_income: [f64; 52], original_income: [f64; 52], tax_
     tax - tax_withheld
 }
 
-pub fn tax_income(taxable_income: [f64; NUM_TIMESTEPS], tax_brackets: [[f64; 5]; NUM_TIMESTEPS], annual_inflation_rate: f64) -> [f64; NUM_TIMESTEPS] {
+pub fn tax_income(taxable_income: [f64; NUM_TIMESTEPS], tax_brackets: [[f64; 4]; NUM_TIMESTEPS], annual_inflation_rate: f64) -> [f64; NUM_TIMESTEPS] {
     let yearly_taxable_income = weekly_to_yearly_taxable_income(&taxable_income);
-    let yearly_tax_brackets: Vec<&[f64; 5]> = tax_brackets.iter()
+    let mut yearly_tax_brackets: Vec<&[f64; 4]> = tax_brackets.iter()
                                             .enumerate()
                                             .filter(|&(time, _)| time % 52 == 0 && time != 0)
                                             .map(|(_, brackets)| brackets)
                                             .collect();
+    yearly_tax_brackets.push(&tax_brackets[NUM_TIMESTEPS - 1]);
     let mut yearly_tax: Vec<f64> = Vec::new();
     for (time, tax_brackets) in yearly_tax_brackets.iter().enumerate() {
         yearly_tax.push(TaxBrackets::compute_tax(yearly_taxable_income[time],
@@ -103,7 +104,7 @@ pub fn tax_income(taxable_income: [f64; NUM_TIMESTEPS], tax_brackets: [[f64; 5];
     let mut weekly_tax_sum: Vec<f64> = Vec::new();
     for time in 0..NUM_TIMESTEPS {
         if time > 0 {
-            weekly_tax[time] = weekly_tax[time - 1] * (1.0 + weekly_inflation_rate / 100.0).powf(time as f64);
+            weekly_tax[time] = weekly_tax[time - 1] * (1.0 + weekly_inflation_rate / 100.0);
         }
         if time % 52 == 0 {
             weekly_tax_sum.push(0.0);
@@ -121,7 +122,7 @@ pub fn tax_income(taxable_income: [f64; NUM_TIMESTEPS], tax_brackets: [[f64; 5];
     taxed_income
 }
 
-pub fn tax_super_fhss(taxable_income: [f64; 52], super_taxed_amount: [f64; 52], super_untaxed_amount: [f64; 52], tax_brackets: [f64; 5]) -> f64 {
+pub fn tax_super_fhss(taxable_income: [f64; 52], super_taxed_amount: [f64; 52], super_untaxed_amount: [f64; 52], tax_brackets: [f64; 4]) -> f64 {
     let year_super_taxed_amount: f64 = super_taxed_amount.into_iter().sum();
     let year_super_untaxed_amount: f64 = super_untaxed_amount.into_iter().sum();
     let tax = 0.15 * year_super_untaxed_amount;

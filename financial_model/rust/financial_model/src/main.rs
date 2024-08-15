@@ -21,11 +21,12 @@ fn main() {
     let expenses = misc::parse_input("input_files/misc.txt");
 
     let mut taxable_income = income;
-    let taxed_income = tax::tax_income(income, tax_brackets);
+    //TODO:Figure out why taxed_income variable is unused
+    let taxed_income = tax::tax_income(income, tax_brackets, params["INFLATION_RATE"]);
     let mut fhss_taxed = [0.0; NUM_TIMESTEPS];
     let mut fhss_untaxed = [0.0; NUM_TIMESTEPS];
 
-    let mut cash = tax::tax_income(income, tax_brackets);
+    let mut cash = tax::tax_income(income, tax_brackets, params["INFLATION_RATE"]);
     for (i, expense) in expenses.iter().enumerate() {
         cash[i] -= expense;
     }
@@ -68,7 +69,7 @@ fn main() {
             cash[sim_time] += cash[sim_time - 1];
         }
 
-        let home_params = home::Params::new(params["home_appreciation_rate"]);
+        let home_params = home::Params::new(params["HOME_APPRECIATION_RATE"]);
         let receipts = home_asset.simulate_timestep(sim_time, home_params, &home_commands);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
@@ -83,8 +84,8 @@ fn main() {
             }
         }
 
-        let home_loan_params = home_loan::Params::new(params["home_loan_interest_rate"]);
-        let receipts = home_loan_asset.simulate_timestep(sim_time, home_loan_params, &home_loan_commands);
+        let home_loan_params = home_loan::Params::new(params["HOME_LOAN_INTEREST_RATE"]);
+        let receipts = home_loan_asset.simulate_timestep(sim_time, home_loan_params, &home_loan_commands, &cash);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
                 match receipt {
@@ -98,7 +99,7 @@ fn main() {
             }
         }
 
-        let car_loan_params = car_loan::Params::new(params["car_loan_interest_rate"]);
+        let car_loan_params = car_loan::Params::new(params["CAR_LOAN_INTEREST_RATE"]);
         let receipts = car_loan_asset.simulate_timestep(sim_time, car_loan_params, &car_loan_commands);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
@@ -110,7 +111,7 @@ fn main() {
             }
         }
 
-        let hecs_params = hecs::Params::new(params["hecs_indexation_rate"]);
+        let hecs_params = hecs::Params::new(params["HECS_INDEXATION_RATE"]);
         let receipts = hecs_asset.simulate_timestep(sim_time, hecs_params, &hecs_commands, &income);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
@@ -122,7 +123,7 @@ fn main() {
             }
         }
 
-        let shares_params = shares::Params::new(params["shares_ror"]);
+        let shares_params = shares::Params::new(params["SHARES_ROR"]);
         let receipts = shares_asset.simulate_timestep(sim_time, shares_params, &shares_commands, &cash);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
@@ -142,7 +143,7 @@ fn main() {
             }
         }
 
-        let super_params = superannuation::Params::new(params["super_ror"]);
+        let super_params = superannuation::Params::new(params["SUPER_ROR"]);
         let receipts = super_asset.simulate_timestep(sim_time, super_params, &super_commands, &cash);
         if let Some(receipts_vec) = receipts {
             for receipt in receipts_vec {
@@ -211,10 +212,10 @@ fn parse_params_file(file_path: &str) -> HashMap<String, f64> {
     params
 }
 
-fn parse_tax_brackets_file(file_path: &str) -> [[f64; 5]; NUM_TIMESTEPS] {
+fn parse_tax_brackets_file(file_path: &str) -> [[f64; 4]; NUM_TIMESTEPS] {
     let input_lines = fs::read_to_string(file_path)
         .expect("Invalid file path");
-    let mut tax_brackets_list = [[0.0; 5]; NUM_TIMESTEPS];
+    let mut tax_brackets_list = [[0.0; 4]; NUM_TIMESTEPS];
     for (time, line) in input_lines.lines().enumerate() {
         let tax_brackets: Vec<&str> = line.split_whitespace()
                                             .collect();
@@ -224,8 +225,7 @@ fn parse_tax_brackets_file(file_path: &str) -> [[f64; 5]; NUM_TIMESTEPS] {
         tax_brackets_list[time] = [tax_brackets[0].parse::<f64>().unwrap(),
                                     tax_brackets[1].parse::<f64>().unwrap(),
                                     tax_brackets[2].parse::<f64>().unwrap(),
-                                    tax_brackets[3].parse::<f64>().unwrap(),
-                                    tax_brackets[4].parse::<f64>().unwrap()]
+                                    tax_brackets[3].parse::<f64>().unwrap()]
     }
     tax_brackets_list
 }
