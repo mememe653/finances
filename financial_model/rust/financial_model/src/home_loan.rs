@@ -24,6 +24,20 @@ struct PayCommand {
     amount: f64,
 }
 
+struct StartAllCommand {
+    time: usize,
+    duration: usize,
+}
+
+impl StartAllCommand {
+    fn new(fields: Vec<&str>) -> Self {
+        Self {
+            time: fields[0].parse::<usize>().unwrap(),
+            duration: fields[3].parse::<usize>().unwrap(),
+        }
+    }
+}
+
 impl PayCommand {
     fn new(fields: Vec<&str>) -> Self {
         Self {
@@ -33,9 +47,23 @@ impl PayCommand {
     }
 }
 
+struct PayAllCommand {
+    time: usize,
+}
+
+impl PayAllCommand {
+    fn new(fields: Vec<&str>) -> Self {
+        Self {
+            time: fields[0].parse::<usize>().unwrap(),
+        }
+    }
+}
+
 pub enum Command {
     Start(StartCommand),
+    StartAll(StartAllCommand),
     Pay(PayCommand),
+    PayAll(PayAllCommand),
 }
 
 impl Command {
@@ -43,8 +71,18 @@ impl Command {
         let fields: Vec<&str> = input_line.split_whitespace()
                                             .collect();
         match fields[1] {
-            "START" => Ok(Self::Start(StartCommand::new(fields))),
-            "PAY" => Ok(Self::Pay(PayCommand::new(fields))),
+            "START" => {
+                match fields[2] {
+                    "ALL" => Ok(Self::StartAll(StartAllCommand::new(fields))),
+                    _ => Ok(Self::Start(StartCommand::new(fields))),
+                }
+            },
+            "PAY" => {
+                match fields[2] {
+                    "ALL" => Ok(Self::PayAll(PayAllCommand::new(fields))),
+                    _ => Ok(Self::Pay(PayCommand::new(fields))),
+                }
+            },
             _ => Err("Failed to parse command"),
         }
     }
@@ -66,7 +104,21 @@ pub fn parse_input(file_path: &str) -> HashMap<usize, Vec<Command>> {
                     commands_map.insert(time, vec![command]);
                 }
             },
+            Command::StartAll(StartAllCommand { time, .. }) => {
+                if let Some(commands_vec) = commands_map.get_mut(&time) {
+                    commands_vec.push(command);
+                } else {
+                    commands_map.insert(time, vec![command]);
+                }
+            },
             Command::Pay(PayCommand { time, .. }) => {
+                if let Some(commands_vec) = commands_map.get_mut(&time) {
+                    commands_vec.push(command);
+                } else {
+                    commands_map.insert(time, vec![command]);
+                }
+            },
+            Command::PayAll(PayAllCommand { time }) => {
                 if let Some(commands_vec) = commands_map.get_mut(&time) {
                     commands_vec.push(command);
                 } else {
@@ -136,7 +188,7 @@ impl Asset {
         }
     }
 
-    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>) -> Option<Vec<Transaction>> {
+    pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>, cash: &[f64; NUM_TIMESTEPS]) -> Option<Vec<Transaction>> {
         let weekly_interest_rate = annual_to_weekly_interest_rate(params.annual_interest_rate);
         if time > 0 {
             self.value[time] = self.value[time - 1] * (1.0 + weekly_interest_rate / 100.0);
@@ -163,6 +215,14 @@ impl Asset {
                                                             *duration));
                         receipts.push(Transaction::Start(StartReceipt::new(*time, *amount)));
                     },
+                    Command::StartAll(StartAllCommand { time, duration }) => {
+                        let amount = cash[*time];
+                        self.value[*time] = amount;
+                        self.minimum_weekly_repayment = Some(minimum_repayment(amount,
+                                                            params.annual_interest_rate,
+                                                            *duration));
+                        receipts.push(Transaction::Start(StartReceipt::new(*time, amount)));
+                    },
                     Command::Pay(PayCommand { time, amount }) => {
                         if self.value[*time] < *amount {
                             receipts.push(Transaction::Pay(PayReceipt::new(*time,
@@ -170,6 +230,17 @@ impl Asset {
                             self.value[*time] = 0.0;
                         } else {
                             receipts.push(Transaction::Pay(PayReceipt::new(*time, *amount)));
+                            self.value[*time] -= amount;
+                        }
+                    },
+                    Command::PayAll(PayAllCommand { time }) => {
+                        let amount = cash[*time];
+                        if self.value[*time] < amount {
+                            receipts.push(Transaction::Pay(PayReceipt::new(*time,
+                                                                           self.value[*time])));
+                            self.value[*time] = 0.0;
+                        } else {
+                            receipts.push(Transaction::Pay(PayReceipt::new(*time, amount)));
                             self.value[*time] -= amount;
                         }
                     },

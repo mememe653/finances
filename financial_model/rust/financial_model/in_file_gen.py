@@ -61,7 +61,9 @@ class HomeLoan:
         self.num_weeks = num_weeks
         self.inflation_rate = annual_inflation_rate
         self.buy_list = {}
+        self.buy_all_list = {}
         self.pay_list = {}
+        self.pay_all_list = {}
 
     def write(self):
         for week in range(self.num_weeks):
@@ -72,6 +74,10 @@ class HomeLoan:
             if week in self.pay_list:
                 for transaction in self.pay_list[week]:
                     self.in_file.write(f"{week} PAY {transaction}\n")
+            if week in self.buy_all_list:
+                self.in_file.write(f"{week} START ALL {self.buy_all_list[week]['duration']}\n")
+            if week in self.pay_all_list:
+                self.in_file.write(f"{week} PAY ALL\n")
         self.in_file.close()
 
     def buy(self, amount, time, duration):
@@ -81,11 +87,23 @@ class HomeLoan:
             "amount": apply_inflation(amount, time, self.inflation_rate),
             "duration": duration,
         })
+
+    def buy_all(self, time, duration):
+        if time not in self.buy_all_list:
+            self.buy_all_list[time] = []
+        self.buy_all_list[time].append({
+            "duration": duration,
+        })
     
     def pay(self, amount, time):
         if time not in self.pay_list:
             self.pay_list[time] = []
         self.pay_list[time].append(apply_inflation(amount, time, self.inflation_rate))
+
+    def pay_all(self, time):
+        if time not in self.pay_all_list:
+            self.pay_all_list[time] = []
+        self.pay_all_list[time] = time
 
 
 class CarLoan:
