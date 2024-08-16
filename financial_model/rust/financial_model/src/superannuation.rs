@@ -43,6 +43,18 @@ impl SellCommand {
     }
 }
 
+struct SellAllCommand {
+    time: usize,
+}
+
+impl SellAllCommand {
+    fn new(fields: Vec<&str>) -> Self {
+        Self {
+            time: fields[0].parse::<usize>().unwrap(),
+        }
+    }
+}
+
 pub enum Command {
     BuySG(BuyCommand),
     BuyCC(BuyCommand),
@@ -50,6 +62,7 @@ pub enum Command {
     BuyNCC(BuyCommand),
     BuyAllNCC(BuyAllCommand),
     Sell(SellCommand),
+    SellAll(SellAllCommand),
 }
 
 impl Command {
@@ -75,7 +88,12 @@ impl Command {
                     _ => Err("Failed to parse command"),
                 }
             },
-            "SELL" => Ok(Self::Sell(SellCommand::new(fields))),
+            "SELL" => {
+                match fields[2] {
+                    "ALL" => Ok(Self::SellAll(SellAllCommand::new(fields))),
+                    _ => Ok(Self::Sell(SellCommand::new(fields))),
+                }
+            },
             _ => Err("Failed to parse command"),
         }
     }
@@ -126,6 +144,13 @@ pub fn parse_input(file_path: &str) -> HashMap<usize, Vec<Command>> {
                 }
             },
             Command::Sell(SellCommand { time, .. }) => {
+                if let Some(commands_vec) = commands_map.get_mut(&time) {
+                    commands_vec.push(command);
+                } else {
+                    commands_map.insert(time, vec![command]);
+                }
+            },
+            Command::SellAll(SellAllCommand { time }) => {
                 if let Some(commands_vec) = commands_map.get_mut(&time) {
                     commands_vec.push(command);
                 } else {
@@ -209,68 +234,87 @@ impl Share {
 
 pub struct Asset {
     value: [f64; NUM_TIMESTEPS],
-    shares: VecDeque<Share>,
+    sg_shares: VecDeque<Share>,
+    cc_shares: VecDeque<Share>,
+    ncc_shares: VecDeque<Share>,
 }
 
 impl Asset {
     pub fn new() -> Self {
         Self {
             value: [0.0; NUM_TIMESTEPS],
-            shares: VecDeque::new(),
+            sg_shares: VecDeque::new(),
+            cc_shares: VecDeque::new(),
+            ncc_shares: VecDeque::new(),
         }
     }
 
     pub fn simulate_timestep(&mut self, time: usize, params: Params, commands: &HashMap<usize, Vec<Command>>, cash: &[f64; NUM_TIMESTEPS]) -> Option<Vec<Transaction>> {
-        self.shares.iter_mut()
-                    .for_each(|share| share.simulate_timestep(&params));
-        self.value[time] = self.shares.iter()
-                                    .map(|share| share.taxed_amount + share.untaxed_amount)
-                                    .sum();
+        self.sg_shares.iter_mut()
+                        .for_each(|share| share.simulate_timestep(&params));
+        self.cc_shares.iter_mut()
+                        .for_each(|share| share.simulate_timestep(&params));
+        self.ncc_shares.iter_mut()
+                        .for_each(|share| share.simulate_timestep(&params));
+        self.value[time] = self.sg_shares.iter()
+                                        .map(|share| share.taxed_amount + share.untaxed_amount)
+                                        .sum::<f64>()
+                            + self.cc_shares.iter()
+                                            .map(|share| share.taxed_amount + share.untaxed_amount)
+                                            .sum::<f64>()
+                            + self.ncc_shares.iter()
+                                            .map(|share| share.taxed_amount + share.untaxed_amount)
+                                            .sum::<f64>();
         let mut receipts = Vec::<Transaction>::new();
         if let Some(commands_vec) = commands.get(&time) {
             for command in commands_vec {
                 match command {
                     Command::BuySG(BuyCommand { time, amount }) => {
                         let tax = 0.15 * amount;
-                        self.shares.push_back(Share::new(amount - tax));
+                        self.sg_shares.push_back(Share::new(amount - tax));
                         receipts.push(Transaction::BuySG(BuyReceipt::new(*time, *amount, tax)));
                     },
                     Command::BuyCC(BuyCommand { time, amount }) => {
                         let tax = 0.15 * amount;
-                        self.shares.push_back(Share::new(amount - tax));
+                        self.cc_shares.push_back(Share::new(amount - tax));
                         receipts.push(Transaction::BuyCC(BuyReceipt::new(*time, *amount, tax)));
                     },
                     Command::BuyAllCC(BuyAllCommand { time }) => {
                         let amount = cash[*time];
                         let tax = 0.15 * amount;
-                        self.shares.push_back(Share::new(amount - tax));
+                        self.cc_shares.push_back(Share::new(amount - tax));
                         receipts.push(Transaction::BuyCC(BuyReceipt::new(*time, amount, tax)));
                     },
                     Command::BuyNCC(BuyCommand { time, amount }) => {
                         let tax = 0.0;
-                        self.shares.push_back(Share::new(*amount));
+                        self.ncc_shares.push_back(Share::new(*amount));
                         receipts.push(Transaction::BuyNCC(BuyReceipt::new(*time, *amount, tax)));
                     },
                     Command::BuyAllNCC(BuyAllCommand { time }) => {
                         let amount = cash[*time];
                         let tax = 0.0;
-                        self.shares.push_back(Share::new(amount));
+                        self.ncc_shares.push_back(Share::new(amount));
                         receipts.push(Transaction::BuyNCC(BuyReceipt::new(*time, amount, tax)));
                     },
                     Command::Sell(SellCommand { time, amount }) => {
                         let mut remaining_amount = amount.clone();
                         while remaining_amount > 0.0 {
-                            let taxed_amount = self.shares[0].taxed_amount;
-                            let untaxed_amount = self.shares[0].untaxed_amount;
+                            let shares = if self.cc_shares.len() > 0 {
+                                &mut self.cc_shares
+                            } else {
+                                &mut self.ncc_shares
+                            };
+                            let taxed_amount = shares[0].taxed_amount;
+                            let untaxed_amount = shares[0].untaxed_amount;
                             if remaining_amount < taxed_amount {
-                                self.shares[0].taxed_amount -= remaining_amount;
+                                shares[0].taxed_amount -= remaining_amount;
                                 receipts.push(Transaction::Sell(SellReceipt::new(*time,
                                                                             remaining_amount,
                                                                             0.0)));
                                 remaining_amount = 0.0;
                             } else if remaining_amount < taxed_amount + untaxed_amount {
-                                self.shares[0].taxed_amount = 0.0;
-                                self.shares[0].untaxed_amount -= remaining_amount -
+                                shares[0].taxed_amount = 0.0;
+                                shares[0].untaxed_amount -= remaining_amount -
                                                                     taxed_amount;
                                 receipts.push(Transaction::Sell(SellReceipt::new(*time,
                                                                             taxed_amount,
@@ -278,13 +322,31 @@ impl Asset {
                                                                             taxed_amount)));
                                 remaining_amount = 0.0;
                             } else {
-                                self.shares.pop_front();
+                                shares.pop_front();
                                 receipts.push(Transaction::Sell(SellReceipt::new(*time,
                                                                             taxed_amount,
                                                                             untaxed_amount)));
                                 remaining_amount -= taxed_amount + untaxed_amount;
                             }
                         }
+                    },
+                    Command::SellAll(SellAllCommand { time }) => {
+                        for share in &self.cc_shares {
+                            let taxed_amount = share.taxed_amount;
+                            let untaxed_amount = share.untaxed_amount;
+                            receipts.push(Transaction::Sell(SellReceipt::new(*time,
+                                                                            taxed_amount,
+                                                                            untaxed_amount)));
+                        }
+                        for share in &self.ncc_shares {
+                            let taxed_amount = share.taxed_amount;
+                            let untaxed_amount = share.untaxed_amount;
+                            receipts.push(Transaction::Sell(SellReceipt::new(*time,
+                                                                            taxed_amount,
+                                                                            untaxed_amount)));
+                        }
+                        self.cc_shares = VecDeque::new();
+                        self.ncc_shares = VecDeque::new();
                     },
                 }
             }

@@ -214,6 +214,7 @@ class Superannuation:
         self.buy_ncc_list = {}
         self.buy_all_ncc_list = {}
         self.sell_list = {}
+        self.sell_all_list = {}
 
     def write(self, income_file_gen):
         for week in range(self.num_weeks):
@@ -233,6 +234,8 @@ class Superannuation:
             if week in self.sell_list:
                 for transaction in self.sell_list[week]:
                     self.in_file.write(f"{week} SELL {transaction['amount']}\n")
+            if week in self.sell_all_list:
+                self.in_file.write(f"{week} SELL ALL\n")
         self.in_file.close()
 
     def buy(self, amount, variant, time):
@@ -265,6 +268,11 @@ class Superannuation:
         self.sell_list[time].append({
             "amount": apply_inflation(amount, time, self.inflation_rate),
         })
+
+    def sell_all(self, time):
+        if time not in self.sell_all_list:
+            self.sell_all_list[time] = []
+        self.sell_all_list[time] = time
 
 
 class Income:
@@ -340,9 +348,17 @@ if __name__ == "__main__":
     for week in range(num_weeks):
         income_file_gen.add(1442, week)
 
-    misc_file_gen.add(-135000, 0)
-    shares_file_gen.buy(135000, 0)
-    shares_file_gen.sell_all(53)
+    #for week in range(10):
+        #superannuation_file_gen.buy_all("CC", week)
+    #superannuation_file_gen.sell(25000, 100)
+
+    for week in range(10):
+        shares_file_gen.buy_all(week)
+    shares_file_gen.sell_all(100)
+
+    #misc_file_gen.add(-135000, 0)
+    #shares_file_gen.buy(135000, 0)
+    #shares_file_gen.sell_all(53)
 
 
 
