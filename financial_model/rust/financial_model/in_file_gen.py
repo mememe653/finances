@@ -75,7 +75,7 @@ class HomeLoan:
                 for transaction in self.pay_list[week]:
                     self.in_file.write(f"{week} PAY {transaction}\n")
             if week in self.buy_all_list:
-                self.in_file.write(f"{week} START ALL {self.buy_all_list[week]['duration']}\n")
+                self.in_file.write(f"{week} START ALL {self.buy_all_list[week]}\n")
             if week in self.pay_all_list:
                 self.in_file.write(f"{week} PAY ALL\n")
         self.in_file.close()
@@ -91,9 +91,7 @@ class HomeLoan:
     def buy_all(self, time, duration):
         if time not in self.buy_all_list:
             self.buy_all_list[time] = []
-        self.buy_all_list[time].append({
-            "duration": duration,
-        })
+        self.buy_all_list[time] = duration
     
     def pay(self, amount, time):
         if time not in self.pay_list:
@@ -321,17 +319,17 @@ class Misc:
 
 if __name__ == "__main__":
     params = {}
-    params["inflation_rate"] = 4
-    params["home_appreciation_rate"] = 8
+    params["inflation_rate"] = 3
+    params["home_appreciation_rate"] = 7
     params["home_loan_interest_rate"] = 6
-    params["car_loan_interest_rate"] = 8
+    params["car_loan_interest_rate"] = 12
     params["hecs_indexation_rate"] = 4
     params["shares_ror"] = 10
     params["super_ror"] = 10
 
     write_params_file(params)
 
-    num_weeks = 35 * 52
+    num_weeks = 35 * 52 + 2
 
     initial_tax_brackets = [18200, 45000, 135000, 190000]
     write_tax_brackets_file(initial_tax_brackets, num_weeks, params["inflation_rate"])
@@ -348,35 +346,111 @@ if __name__ == "__main__":
     for week in range(num_weeks):
         income_file_gen.add(1442, week)
 
-    #for week in range(10):
-        #superannuation_file_gen.buy_all("CC", week)
-    #superannuation_file_gen.sell(25000, 100)
-
-    for week in range(10):
-        shares_file_gen.buy_all(week)
-    shares_file_gen.sell_all(100)
-
-    #misc_file_gen.add(-135000, 0)
-    #shares_file_gen.buy(135000, 0)
-    #shares_file_gen.sell_all(53)
-
-
+    misc_file_gen.add(-140000, 0)
+    shares_file_gen.buy(140000, 0)
 
     #misc_file_gen.add(-8000, 0)
-    #home_file_gen.buy(500000, 0)
-    #home_file_gen.sell(52)
-    #home_loan_file_gen.buy(300000, 0, 30)
-    #home_loan_file_gen.pay(10000, 52)
-    #car_loan_file_gen.buy(20000, 10000, 0, 1)
-    #shares_file_gen.buy(100000, 1)
-    #shares_file_gen.sell(10000, 53)
-    #superannuation_file_gen.buy(10000, "CC", 1)
-    #superannuation_file_gen.sell(1000, 53)
-    #for week in range(num_weeks):
-        #superannuation_file_gen.buy(0.11 * 1442, "SG", week)
-        #superannuation_file_gen.buy(1000, "NCC", week)
-    #superannuation_file_gen.sell(10000, 26)
-    #hecs_file_gen.pay(1000, 1)
+
+    for week in range(1, 3 * 52):
+        if week in range(1, 1 + 10):
+            superannuation_file_gen.buy_all("CC", week)
+        elif week in range(1 * 52, 1 * 52 + 10):
+            superannuation_file_gen.buy_all("CC", week)
+        elif week in range(2 * 52, 2 * 52 + 10):
+            superannuation_file_gen.buy_all("CC", week)
+        else:
+            shares_file_gen.buy_all(week)
+
+    superannuation_file_gen.sell_all(3 * 52)
+    #NOTE:Dad said $100k towards first home, have only tried simulating with $200k thus far
+    #misc_file_gen.add(-200000, 3 * 52)
+    misc_file_gen.add(-100000, 3 * 52)
+    home_file_gen.buy(500000, 3 * 52)
+
+    # Note that Options 1,2,3 assume a world where I can contribute
+    # $30k into super per year.
+    # A better comparison might be how to best allocate a fixed amount of money,
+    # holding everything else constant, if I have not maxed out my yearly super contribution.
+    # What I need to do is figure out the priorities of where to invest my money.
+
+    # Option 1: 17592137 7866836
+    #home_loan_file_gen.buy(400000, 3 * 52, 30)
+    #shares_file_gen.buy_all(3 * 52 + 1)
+    #for week in range(3 * 52 + 2, num_weeks - 4):
+        #if week % 52 >= 2 and week % 52 < 22:
+            #superannuation_file_gen.buy_all("CC", week)
+        #else:
+            #shares_file_gen.buy_all(week)
+    #car_loan_file_gen.buy(30000, 0, 10 * 52, 5)
+    #shares_file_gen.sell_all(num_weeks - 4)
+
+    # Option 2: 16696309 8431254
+    #home_loan_file_gen.buy(300000, 3 * 52, 30)
+    #shares_file_gen.buy_all(3 * 52 + 1)
+    #for week in range(3 * 52 + 2, num_weeks - 4):
+        #if week % 52 >= 2 and week % 52 < 22:
+            #superannuation_file_gen.buy_all("CC", week)
+        #else:
+            #shares_file_gen.buy_all(week)
+    #car_loan_file_gen.buy(30000, 0, 10 * 52, 5)
+    #shares_file_gen.sell_all(num_weeks - 4)
+
+    # Option 3: 17468912 8038111
+    #home_loan_file_gen.buy(400000, 3 * 52, 30)
+    #shares_file_gen.buy_all(3 * 52 + 1)
+    #for week in range(3 * 52 + 2, num_weeks - 4):
+        #if week % 52 >= 2 and week % 52 < 22:
+            #superannuation_file_gen.buy_all("CC", week)
+        #elif week == 10 * 52:
+            #shares_file_gen.sell(30000, 10 * 52)
+            #misc_file_gen.add(30000, 10 * 52)
+        #else:
+            #shares_file_gen.buy_all(week)
+    #shares_file_gen.sell_all(num_weeks - 4)
+
+    # Option 11:
+    home_loan_file_gen.buy(350000, 3 * 52, 30)
+    shares_file_gen.buy_all(3 * 52 + 1)
+
+    # Super 350000: 10679919 + 4480138 = 15160057
+    # Super 400000: 11115493 + 4205141 = 15320634
+    # Home loan 400000: 11116844 + 4184006 = 15300850
+    # Choose one of the lines below
+    superannuation_file_gen.buy_all("CC", 3 * 52 + 2)
+    #home_loan_file_gen.pay_all(3 * 52 + 2)
+    #shares_file_gen.buy_all(3 * 52 + 2)
+
+    for week in range(3 * 52 + 3, num_weeks - 4):
+        if week % 52 >= 3 and week % 52 < 23:
+            misc_file_gen.add(500, week)
+            superannuation_file_gen.buy_all("CC", week)
+        elif week == 10 * 52:
+            shares_file_gen.sell(30000, 10 * 52)
+            misc_file_gen.add(30000, 10 * 52)
+        else:
+            misc_file_gen.add(500, week)
+            shares_file_gen.buy_all(week)
+    shares_file_gen.sell_all(num_weeks - 4)
+
+
+
+
+
+
+
+
+    # 500 796677
+    #misc_file_gen.add(30000, 60)
+    #for week in range(60, 60 + 5 * 52):
+        #shares_file_gen.buy_all(week)
+    #shares_file_gen.sell_all(60 + 5 * 52)
+
+    # 500 797560 Car Loan Interest Rate 8
+    # 500 793525 Car Loan Interest Rate 12
+    # 500 792029 Car Loan Interest Rate 12 Balloon Payment 10000 car_loan_file_gen.buy(20000, 10000, 60, 5)
+    #for week in range(60, 60 + 5 * 52):
+        #shares_file_gen.buy_all(week)
+    #shares_file_gen.sell_all(60 + 5 * 52)
 
     income_file_gen.write()
     misc_file_gen.write()
@@ -386,3 +460,18 @@ if __name__ == "__main__":
     shares_file_gen.write()
     superannuation_file_gen.write(income_file_gen)
     hecs_file_gen.write()
+
+
+    # Consider making maximum CC contributions over a few years from your shares unless
+    # that is a CGT event? Maybe who cares if it is a CGT event since you would need to
+    # have one eventually to do anything with those shares, and maybe better to have it
+    # earlier than later so you can get it into the good tax environment of super?
+
+    # So it looks like my highest priority should be putting money into super.
+    # It may make sense to reduce my home loan to the point where I can contribute the
+    # maximum amount in super each year without having to spend my shares. Because that
+    # is less risky. Once you have put enough into super to retire on, you can start
+    # investing the rest in shares. And you have a low weekly mortgage repayment still,
+    # and there is no risk with this strategy. It is also better from a lifestyle
+    # perspective, because with lower mortgage repayments, I will have the cash in hand
+    # which I can choose to either spend or invest.
