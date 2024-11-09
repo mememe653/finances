@@ -110,6 +110,10 @@ impl Asset {
             self.value[time] = self.value[time - 1] * (1.0 + weekly_interest_rate / 100.0);
             self.balloon_payment_value[time] = self.balloon_payment_value[time - 1] * 
                 (1.0 + weekly_interest_rate / 100.0);
+            let loan_value = self.value[time];
+            let balloon_payment_value = self.balloon_payment_value[time];
+            log::trace!("Apply interest to car loan, remaining loan is ${loan_value} at time (time)");
+            log::trace!("Apply interest to car loan balloon payment, new balloon payment value is ${balloon_payment_value} at time {time}");
         }
         let mut receipts = Vec::<Transaction>::new();
         if let Some(balloon_payment_time) = self.balloon_payment_time {
@@ -118,6 +122,7 @@ impl Asset {
                 receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
                 self.balloon_payment_value[time] = 0.0;
                 self.balloon_payment_time = None;
+                log::trace!("Pay car loan balloon payment of ${amount} at time {time}");
             }
         }
         if let Some(minimum_repayment) = self.minimum_weekly_repayment {
@@ -126,10 +131,12 @@ impl Asset {
                 receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
                 self.value[time] -= amount;
                 self.minimum_weekly_repayment = None;
+                log::trace!("Pay minimum weekly car loan repayment of ${amount} at time {time}");
             } else {
                 let amount = minimum_repayment;
                 receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
                 self.value[time] -= amount;
+                log::trace!("Pay minimum weekly car loan repayment of ${amount} at time {time}");
             }
         }
         if let Some(commands_vec) = commands.get(&time) {
@@ -142,6 +149,7 @@ impl Asset {
                         self.minimum_weekly_repayment = Some(minimum_repayment(*amount,
                                                             params.annual_interest_rate,
                                                             *duration));
+                        log::trace!("Take out car loan worth ${amount} at time {time}");
                     },
                 }
             }

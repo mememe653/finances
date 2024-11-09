@@ -82,6 +82,8 @@ pub fn reconcile_tax(taxable_income: [f64; 52], original_income: [f64; 52], tax_
     let tax = TaxBrackets::compute_tax(year_taxable_income, TAX_RATES, tax_brackets);
     let year_original_income = original_income.into_iter().sum();
     let tax_withheld = TaxBrackets::compute_tax(year_original_income, TAX_RATES, tax_brackets);
+    let tax_amount = tax - tax_withheld;
+    log::trace!("Taxed ${tax_amount}");
     tax - tax_withheld
 }
 
@@ -140,6 +142,8 @@ pub fn tax_super_fhss(taxable_income: [f64; 52], super_taxed_amount: [f64; 52], 
     let tax_1 = TaxBrackets::compute_tax(year_taxable_income, adjusted_tax_rates, tax_brackets);
     let year_super_amount = year_super_taxed_amount + year_super_untaxed_amount - tax;
     let tax_2 = TaxBrackets::compute_tax(year_taxable_income + year_super_amount, adjusted_tax_rates, tax_brackets);
+    let tax_amount = tax + tax_2 - tax_1;
+    log::trace!("Taxed ${tax_amount} for FHSS");
     tax + tax_2 - tax_1
 }
 

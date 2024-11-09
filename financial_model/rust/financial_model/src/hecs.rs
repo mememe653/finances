@@ -109,6 +109,8 @@ impl Asset {
         }
         if time > 0 {
             self.value[time] = self.value[time - 1] * (1.0 + weekly_interest_rate / 100.0);
+            let value = self.value[time];
+            log::trace!("Apply interest to HECS debt, remaining HECS debt is ${value} at time {time}");
         }
         let mut receipts = Vec::<Transaction>::new();
         if let Some(repayment) = self.minimum_weekly_repayment {
@@ -117,10 +119,12 @@ impl Asset {
                 self.value[time] -= amount;
                 receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
                 self.minimum_weekly_repayment = None;
+                log::trace!("Pay minimum weekly HECS repayment of ${amount} at time {time}");
             } else {
                 let amount = repayment;
                 self.value[time] -= repayment;
                 receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
+                log::trace!("Pay minimum weekly HECS repayment of ${amount} at time {time}");
             }
         }
         if let Some(commands_vec) = commands.get(&time) {
@@ -132,9 +136,11 @@ impl Asset {
                             self.value[*time] -= actual_amount;
                             receipts.push(Transaction::Pay(PayReceipt::new(*time,
                                                                            actual_amount)));
+                            log::trace!("Make extra HECS repayment of ${actual_amount} at time {time}");
                         } else {
                             self.value[*time] -= amount;
                             receipts.push(Transaction::Pay(PayReceipt::new(*time, *amount)));
+                            log::trace!("Make extra HECS repayment of ${amount} at time {time}");
                         }
                     },
                 }

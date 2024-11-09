@@ -265,6 +265,8 @@ impl Asset {
                             + self.ncc_shares.iter()
                                             .map(|share| share.taxed_amount + share.untaxed_amount)
                                             .sum::<f64>();
+        let value = self.value[time];
+        log::trace!("Earn return on investment, super worth ${value} at time {time}");
         let mut receipts = Vec::<Transaction>::new();
         if let Some(commands_vec) = commands.get(&time) {
             for command in commands_vec {
@@ -273,28 +275,33 @@ impl Asset {
                         let tax = 0.15 * amount;
                         self.sg_shares.push_back(Share::new(amount - tax));
                         receipts.push(Transaction::BuySG(BuyReceipt::new(*time, *amount, tax)));
+                        log::trace!("Super guarantee of ${amount} - ${tax} tax at time {time}");
                     },
                     Command::BuyCC(BuyCommand { time, amount }) => {
                         let tax = 0.15 * amount;
                         self.cc_shares.push_back(Share::new(amount - tax));
                         receipts.push(Transaction::BuyCC(BuyReceipt::new(*time, *amount, tax)));
+                        log::trace!("Make concessional super contribution of ${amount} - ${tax} tax at time {time}");
                     },
                     Command::BuyAllCC(BuyAllCommand { time }) => {
                         let amount = cash[*time];
                         let tax = 0.15 * amount;
                         self.cc_shares.push_back(Share::new(amount - tax));
                         receipts.push(Transaction::BuyCC(BuyReceipt::new(*time, amount, tax)));
+                        log::trace!("Make concessional super contribution of ${amount} - ${tax} tax at time {time}");
                     },
                     Command::BuyNCC(BuyCommand { time, amount }) => {
                         let tax = 0.0;
                         self.ncc_shares.push_back(Share::new(*amount));
                         receipts.push(Transaction::BuyNCC(BuyReceipt::new(*time, *amount, tax)));
+                        log::trace!("Make non-concessional super contribution of ${amount} at time {time}");
                     },
                     Command::BuyAllNCC(BuyAllCommand { time }) => {
                         let amount = cash[*time];
                         let tax = 0.0;
                         self.ncc_shares.push_back(Share::new(amount));
                         receipts.push(Transaction::BuyNCC(BuyReceipt::new(*time, amount, tax)));
+                        log::trace!("Make non-concessional super contribution of ${amount} at time {time}");
                     },
                     Command::Sell(SellCommand { time, amount }) => {
                         let mut remaining_amount = amount.clone();
@@ -329,6 +336,7 @@ impl Asset {
                                 remaining_amount -= taxed_amount + untaxed_amount;
                             }
                         }
+                        log::trace!("Sell super shares worth ${amount} at time {time}");
                     },
                     Command::SellAll(SellAllCommand { time }) => {
                         for share in &self.cc_shares {
@@ -347,6 +355,7 @@ impl Asset {
                         }
                         self.cc_shares = VecDeque::new();
                         self.ncc_shares = VecDeque::new();
+                        log::trace!("Sell all super shares at time {time}");
                     },
                 }
             }

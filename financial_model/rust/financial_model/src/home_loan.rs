@@ -192,6 +192,8 @@ impl Asset {
         let weekly_interest_rate = annual_to_weekly_interest_rate(params.annual_interest_rate);
         if time > 0 {
             self.value[time] = self.value[time - 1] * (1.0 + weekly_interest_rate / 100.0);
+            let value = self.value[time];
+            log::trace!("Apply interest to home loan, remaining loan is ${value} at time {time}");
         }
         let mut receipts = Vec::<Transaction>::new();
         if let Some(minimum_repayment) = self.minimum_weekly_repayment {
@@ -199,10 +201,12 @@ impl Asset {
                 let amount = self.value[time];
                 receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
                 self.value[time] -= amount;
+                log::trace!("Pay minimum weekly home loan repayment of ${amount} at time {time}");
             } else {
                 let amount = minimum_repayment;
                 receipts.push(Transaction::Pay(PayReceipt::new(time, amount)));
                 self.value[time] -= amount;
+                log::trace!("Pay minimum weekly home loan repayment of ${amount} at time {time}");
             }
         }
         if let Some(commands_vec) = commands.get(&time) {
@@ -214,6 +218,7 @@ impl Asset {
                                                             params.annual_interest_rate,
                                                             *duration));
                         receipts.push(Transaction::Start(StartReceipt::new(*time, *amount)));
+                        log::trace!("Take out home loan worth ${amount} at time {time}");
                     },
                     Command::StartAll(StartAllCommand { time, duration }) => {
                         let amount = cash[*time];
@@ -222,15 +227,19 @@ impl Asset {
                                                             params.annual_interest_rate,
                                                             *duration));
                         receipts.push(Transaction::Start(StartReceipt::new(*time, amount)));
+                        log::trace!("Take out home loan worth ${amount} at time {time}");
                     },
                     Command::Pay(PayCommand { time, amount }) => {
                         if self.value[*time] < *amount {
                             receipts.push(Transaction::Pay(PayReceipt::new(*time,
                                                                            self.value[*time])));
+                            let paid_amount = self.value[*time];
                             self.value[*time] = 0.0;
+                            log::trace!("Make extra home loan repayment of ${paid_amount} at time {time}");
                         } else {
                             receipts.push(Transaction::Pay(PayReceipt::new(*time, *amount)));
                             self.value[*time] -= amount;
+                            log::trace!("Make extra home loan repayment of ${amount} at time {time}");
                         }
                     },
                     Command::PayAll(PayAllCommand { time }) => {
@@ -238,10 +247,13 @@ impl Asset {
                         if self.value[*time] < amount {
                             receipts.push(Transaction::Pay(PayReceipt::new(*time,
                                                                            self.value[*time])));
+                            let paid_amount = self.value[*time];
                             self.value[*time] = 0.0;
+                            log::trace!("Make extra home loan repayment of ${paid_amount} at time {time}");
                         } else {
                             receipts.push(Transaction::Pay(PayReceipt::new(*time, amount)));
                             self.value[*time] -= amount;
+                            log::trace!("Make extra home loan repayment of ${amount} at time {time}");
                         }
                     },
                 }

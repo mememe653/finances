@@ -222,6 +222,8 @@ impl Asset {
         self.value[time] = self.shares.iter()
                                     .map(|share| share.initial_value + share.capital_gains)
                                     .sum();
+        let value = self.value[time];
+        log::trace!("Earn return on investment, shares worth ${value} at time {time}");
         let mut receipts = Vec::<Transaction>::new();
         if let Some(commands_vec) = commands.get(&time) {
             for command in commands_vec {
@@ -229,11 +231,13 @@ impl Asset {
                     Command::Buy(BuyCommand { time, amount }) => {
                         self.shares.push_back(Share::new(*amount));
                         receipts.push(Transaction::Buy(BuyReceipt::new(*time, *amount)));
+                        log::trace!("Buy shares at time {time} worth ${amount}");
                     },
                     Command::BuyAll(BuyAllCommand { time }) => {
                         let amount = cash[*time];
                         self.shares.push_back(Share::new(amount));
                         receipts.push(Transaction::Buy(BuyReceipt::new(*time, amount)));
+                        log::trace!("Buy shares at time {time} worth ${amount}");
                     },
                     Command::Sell(SellCommand { time, amount }) => {
                         let mut remaining_amount = amount.clone();
@@ -268,6 +272,7 @@ impl Asset {
                                                                                  weeks_held)));
                             }
                         }
+                        log::trace!("Sell shares worth ${amount} at time {time}");
                     },
                     Command::SellAll(SellAllCommand { time }) => {
                         while self.shares.len() > 0 {
@@ -280,6 +285,7 @@ impl Asset {
                                                                              cg_amount,
                                                                              weeks_held)));
                         }
+                        log::trace!("Sell all shares at time {time}");
                     },
                 }
             }

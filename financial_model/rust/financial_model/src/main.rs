@@ -1,5 +1,6 @@
 use std::fs;
 use std::collections::HashMap;
+use simple_logger::SimpleLogger;
 
 mod home;
 mod home_loan;
@@ -11,9 +12,11 @@ mod income;
 mod tax;
 mod misc;
 
-const NUM_TIMESTEPS: usize = 35 * 52;
+const NUM_TIMESTEPS: usize = 35 * 52 + 2;
 
 fn main() {
+    SimpleLogger::new().with_colors(true).init().unwrap();
+
     let params = parse_params_file("input_files/params.txt");
     let tax_brackets = parse_tax_brackets_file("input_files/tax_brackets.txt");
 
@@ -82,6 +85,8 @@ fn main() {
                     },
                 }
             }
+            let cash_on_hand = cash[sim_time];
+            log::trace!("Cash on hand is ${cash_on_hand}");
         }
 
         let home_loan_params = home_loan::Params::new(params["HOME_LOAN_INTEREST_RATE"]);
@@ -97,6 +102,8 @@ fn main() {
                     },
                 }
             }
+            let cash_on_hand = cash[sim_time];
+            log::trace!("Cash on hand is ${cash_on_hand}");
         }
 
         let car_loan_params = car_loan::Params::new(params["CAR_LOAN_INTEREST_RATE"]);
@@ -109,6 +116,8 @@ fn main() {
                     },
                 }
             }
+            let cash_on_hand = cash[sim_time];
+            log::trace!("Cash on hand is ${cash_on_hand}");
         }
 
         let hecs_params = hecs::Params::new(params["HECS_INDEXATION_RATE"]);
@@ -121,6 +130,8 @@ fn main() {
                     }
                 }
             }
+            let cash_on_hand = cash[sim_time];
+            log::trace!("Cash on hand is ${cash_on_hand}");
         }
 
         let shares_params = shares::Params::new(params["SHARES_ROR"]);
@@ -141,6 +152,8 @@ fn main() {
                     }
                 }
             }
+            let cash_on_hand = cash[sim_time];
+            log::trace!("Cash on hand is ${cash_on_hand}");
         }
 
         let super_params = superannuation::Params::new(params["SUPER_ROR"]);
@@ -177,6 +190,8 @@ fn main() {
                     }
                 }
             }
+            let cash_on_hand = cash[sim_time];
+            log::trace!("Cash on hand is ${cash_on_hand}");
         }
     }
 

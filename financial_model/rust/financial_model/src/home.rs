@@ -134,6 +134,8 @@ impl Asset {
         let weekly_ror = annual_to_weekly_ror(params.annual_ror);
         if time > 0 {
             self.value[time] = self.value[time - 1] * (1.0 + weekly_ror / 100.0);
+            let value = self.value[time];
+            log::trace!("Earn return on investment, home worth ${value} at time {time}");
         }
         let mut receipts = Vec::<Transaction>::new();
         if let Some(commands_vec) = commands.get(&time) {
@@ -142,11 +144,13 @@ impl Asset {
                     Command::Buy(BuyCommand { time, amount }) => {
                         self.value[*time] += amount;
                         receipts.push(Transaction::Buy(BuyReceipt::new(*time, *amount)));
+                        log::trace!("Buy home at time {time} worth ${amount}");
                     },
                     Command::Sell(SellCommand { time }) => {
                         let amount = self.value[*time];
                         self.value[*time] = 0.0;
                         receipts.push(Transaction::Sell(SellReceipt::new(*time, amount)));
+                        log::trace!("Sell home at time {time} for ${amount}");
                     },
                 }
             }
